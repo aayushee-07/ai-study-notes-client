@@ -41,18 +41,20 @@ function formatRole(role) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const API_BASE = (import.meta.env.VITE_API_URL || "")
+  .replace("/api", "");
+
 function withCacheBuster(url) {
   if (!url) return "";
 
   const fullUrl = url.startsWith("http")
     ? url
-    : `http://localhost:5000${url}`;
+    : `${API_BASE}${url}`;
 
   const separator = fullUrl.includes("?") ? "&" : "?";
 
   return `${fullUrl}${separator}t=${Date.now()}`;
 }
-
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();

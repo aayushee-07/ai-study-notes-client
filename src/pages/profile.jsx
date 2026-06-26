@@ -412,7 +412,11 @@ export default function Profile() {
                   <div className="relative shrink-0 self-start">
                     {profile?.avatarUrl || profile?.avatar ? (
                       <img
-                        src={`http://localhost:5000${profile.avatarUrl || profile.avatar}`}
+                        src={
+                          (profile.avatarUrl || profile.avatar)?.startsWith("http")
+                            ? (profile.avatarUrl || profile.avatar)
+                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${profile.avatarUrl || profile.avatar}`
+                        }
                         alt="Profile avatar"
                         className="h-16 w-16 rounded-2xl border border-white/20 object-cover shadow-md sm:h-20 sm:w-20"
                       />

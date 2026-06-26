@@ -1,7 +1,7 @@
 // src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../lib/apiClient";
 import {
   Mail,
   Lock,
@@ -27,7 +27,7 @@ export default function Login({ setUser }) {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await apiClient.post("/auth/login", {
         email: email.trim().toLowerCase(),
         password: password.trim(),
       });
@@ -56,8 +56,8 @@ export default function Login({ setUser }) {
 
       setError(
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Login failed"
+        err.response?.data?.error ||
+        "Login failed"
       );
     } finally {
       setLoading(false);

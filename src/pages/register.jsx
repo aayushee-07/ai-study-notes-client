@@ -1,7 +1,7 @@
 // src/pages/Register.jsx
 import { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../lib/apiClient";
 import {
   BookOpenText,
   Sparkles,
@@ -67,7 +67,7 @@ export default function Register({ setUser }) {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
+      const res = await apiClient.post("/auth/register", {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password: password.trim(),
@@ -80,8 +80,8 @@ export default function Register({ setUser }) {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Registration failed"
+        err.response?.data?.error ||
+        "Registration failed"
       );
     } finally {
       setLoading(false);

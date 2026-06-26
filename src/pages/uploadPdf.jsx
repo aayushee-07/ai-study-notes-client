@@ -30,13 +30,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-let apiClient;
-try {
-  apiClient = require("../utils/apiClient").default;
-} catch {
-  apiClient = axios.create({ baseURL: "http://localhost:5000" });
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatBytes = (bytes) => {
@@ -246,7 +239,7 @@ export default function UploadPDF() {
   const fetchData = useCallback(async () => {
     setRecentLoading(true);
     try {
-      const res = await apiClient.get("/api/notes/all", {
+      const res = await apiClient.get("/notes/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const notes = res.data?.notes || res.data || [];

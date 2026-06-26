@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../lib/apiClient";
 import {
   ShieldCheck,
   KeyRound,
@@ -76,7 +76,7 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/reset-password", {
+      const res = await apiClient.post("/auth/reset-password", {
         email,
         otp: otp.trim(),
         password,
@@ -87,8 +87,8 @@ export default function ResetPassword() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to reset password"
+        err.response?.data?.error ||
+        "Failed to reset password"
       );
     } finally {
       setLoading(false);
@@ -103,7 +103,7 @@ export default function ResetPassword() {
     setSuccess("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", {
+      const res = await apiClient.post("/auth/forgot-password", {
         email,
       });
 
@@ -112,8 +112,8 @@ export default function ResetPassword() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to resend OTP"
+        err.response?.data?.error ||
+        "Failed to resend OTP"
       );
     } finally {
       setResendLoading(false);

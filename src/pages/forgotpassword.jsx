@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../lib/apiClient";
 import {
   Mail,
   ShieldCheck,
@@ -24,7 +24,7 @@ export default function ForgotPassword() {
     setSuccess("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", {
+      const res = await apiClient.post("/auth/forgot-password", {
         email: email.trim().toLowerCase(),
       });
 
@@ -38,8 +38,8 @@ export default function ForgotPassword() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to send OTP"
+        err.response?.data?.error ||
+        "Failed to send OTP"
       );
     } finally {
       setLoading(false);
