@@ -9,7 +9,7 @@ import Dashboard from "./pages/dashboard.jsx";
 import Notes from "./pages/notes.jsx";
 import CreateNotes from "./pages/createnotes.jsx";
 import NoteDetails from "./pages/notesDetails.jsx";
-import EditNote from "./pages/EditNote.jsx";
+import EditNote from "./pages/Editnote.jsx";
 import Profile from "./pages/profile.jsx";
 import Favorites from "./pages/favourite.jsx";
 import AdminDashboard from "./pages/admindashboard.jsx";
