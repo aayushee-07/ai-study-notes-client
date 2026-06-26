@@ -13,7 +13,11 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+ baseURL:
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV
+    ? "http://localhost:5000/api"
+    : "https://ai-study-notes-server.onrender.com/api"),
 
   // 2-minute default — covers slow AI responses (summary, simplify).
   // Individual aiService calls that need even longer can pass their own
