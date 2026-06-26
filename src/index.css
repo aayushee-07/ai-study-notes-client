@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-zinc-850: #141417;
+  --color-zinc-950: #070709;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  @apply bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-white;
+}
+
+#root {
+  @apply bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-white;
+}
+
+.bg-glow-gradient {
+  background: radial-gradient(
+    circle at top left,
+    rgba(99, 102, 241, 0.15),
+    transparent 60%
+  );
+}
