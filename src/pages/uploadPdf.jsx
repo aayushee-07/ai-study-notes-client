@@ -243,34 +243,47 @@ export default function UploadPDF() {
 
   // ─── Data fetching ────────────────────────────────────────────────────────
 
-  const fetchData = useCallback(async () => {
-    setRecentLoading(true);
-    try {
-      const res = await apiClient.get("/notes/all");
-      const notes = res.data?.notes || res.data || [];
-      const filteredNotes = notes.filter((n) => n.pdfFile);
-      setRecentPDFs(filteredNotes);
+const fetchData = useCallback(async () => {
+  setRecentLoading(true);
 
-      const totalPDFs = filteredNotes.length;
-      const totalCharacters = filteredNotes.reduce((sum, n) => sum + (n.extractedText?.length || 0), 0);
-      const aiFeaturesGenerated = filteredNotes.filter(hasAnyAIFeature).length;
-      const lastUpload = [...filteredNotes].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      )[0];
-      setPdfStats({ totalPDFs, totalCharacters, aiFeaturesGenerated, lastUploadDate: lastUpload?.createdAt });
+  try {
+    const res = await apiClient.get("/notes/all");
+    const notes = res.data?.notes || res.data || [];
 
-      try {
-        const historyRes = await apiClient.get("/ai/history");
-        setRecentActivity((historyRes.data?.history || []).slice(0, 3));
-      } catch {
-        setRecentActivity([]);
-      }
-    } catch {
-      setRecentPDFs([]);
-    } finally {
-      setRecentLoading(false);
-    }
-  }, []);
+    const filteredNotes = notes.filter((n) => n.pdfFile);
+    setRecentPDFs(filteredNotes);
+
+    const totalPDFs = filteredNotes.length;
+    const totalCharacters = filteredNotes.reduce(
+      (sum, n) => sum + (n.extractedText?.length || 0),
+      0
+    );
+
+    const aiFeaturesGenerated = filteredNotes.filter(hasAnyAIFeature).length;
+
+    const lastUpload = [...filteredNotes].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    )[0];
+
+    setPdfStats({
+      totalPDFs,
+      totalCharacters,
+      aiFeaturesGenerated,
+      lastUploadDate: lastUpload?.createdAt,
+    });
+
+    // Backend has NO /history route
+    // Keep recent activity empty
+    setRecentActivity([]);
+
+  } catch (err) {
+    console.error(err);
+    setRecentPDFs([]);
+    setRecentActivity([]);
+  } finally {
+    setRecentLoading(false);
+  }
+}, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
