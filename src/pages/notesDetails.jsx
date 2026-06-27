@@ -1093,7 +1093,13 @@ export default function NoteDetails() {
             {/* ── Tab bar — horizontally scrollable on mobile ── */}
             <div
               role="tablist"
-              className="grid w-full grid-cols-8 gap-1 rounded-xl border border-slate-800 bg-[#161b22] p-1.5"
+              className="
+grid w-full grid-cols-8 gap-1
+rounded-xl border
+border-slate-200 bg-white
+dark:border-slate-800 dark:bg-[#161b22]
+p-1.5
+"
             >
               {TABS.map(({ key, label, icon: Icon }) => {
                 const active = activeTab === key;
@@ -1105,14 +1111,14 @@ export default function NoteDetails() {
                     className={cn(
                       "relative flex w-full items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[12px] font-medium transition-all whitespace-nowrap",
                       active
-                        ? "bg-purple-600 text-white shadow-sm"
-                        : "text-slate-300 hover:bg-slate-800/60"
+                        ? "bg-purple-600 text-white shadow-sm dark:bg-purple-500"
+                        : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60"
                     )}
                   >
                     <Icon size={12} className="shrink-0" />
                     <span className="truncate">{label}</span>
                     {done && !active && (
-                      <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                     )}
                   </button>
                 );
