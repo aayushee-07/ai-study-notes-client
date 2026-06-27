@@ -260,7 +260,7 @@ export default function UploadPDF() {
       setPdfStats({ totalPDFs, totalCharacters, aiFeaturesGenerated, lastUploadDate: lastUpload?.createdAt });
 
       try {
-        const historyRes = await apiClient.get("/api/ai/history");
+        const historyRes = await apiClient.get("/ai/history");
         setRecentActivity((historyRes.data?.history || []).slice(0, 3));
       } catch {
         setRecentActivity([]);
@@ -338,7 +338,7 @@ export default function UploadPDF() {
     const formData = new FormData();
     formData.append("pdf", file);
     try {
-      const res = await apiClient.post("/api/ai/upload", formData, {
+      const res = await apiClient.post("/ai/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (e) => {
           const pct = Math.round((e.loaded * 100) / e.total);
