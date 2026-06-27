@@ -2,26 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../lib/apiClient";
 import {
-  Save,
-  X,
-  Eye,
-  EyeOff,
-  Trash2,
-  Check,
-  AlertCircle,
-  Loader,
-  BookOpen,
-  Star,
+  Save, X, Eye, EyeOff, Trash2, Check, AlertCircle,
+  Loader, BookOpen, Star, Sparkles, Info, CheckCircle2, ArrowLeft,
 } from "lucide-react";
 import Layout from "../components/Layout";
 
-// ─── Dark mode palette — matches Favorites/Notes pages exactly ────────────
-// Hero/header panel:  dark:border-slate-800  dark:bg-[#161b22]
-// Cards / panels:     dark:border-slate-800  dark:bg-[#161b22]
-// Inputs/selects:     dark:border-slate-700  dark:bg-slate-900
-// Secondary buttons:  dark:border-slate-700  dark:bg-slate-800
-// Preview panel:      dark:bg-slate-900 (inline code block feel)
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getNoteId(note) {
   return note?._id || note?.id || note?.noteId || null;
@@ -31,40 +19,121 @@ function extractNoteData(payload) {
   return payload?.note || payload?.data || payload || {};
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Toast — typed, matches Notes.jsx exactly
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
+  const tone =
+    toast.type === "success"
+      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+      : toast.type === "error"
+        ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+        : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
+  const Icon =
+    toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
+  return (
+    <div
+      className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${tone}`}
+    >
+      <Icon size={18} className="mt-0.5 shrink-0" />
+      <div className="flex-1 text-sm leading-5">{toast.message}</div>
+      <button onClick={onClose} aria-label="Close toast" className="transition-opacity hover:opacity-100">
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConfirmDeleteModal — matches Notes.jsx / UploadPDF.jsx exactly
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConfirmDeleteModal({ open, loading, onCancel, onConfirm }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-300">
+            <Trash2 size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Delete note?</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              This will permanently delete this note and cannot be undone.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="rounded-xl border border-rose-200 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-700 transition-colors hover:bg-rose-500/15 disabled:opacity-60 dark:border-rose-500/20 dark:text-rose-200"
+          >
+            {loading ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function CreateNote() {
-  const navigate = useNavigate();
-  const { id } = useParams();
+  const navigate  = useNavigate();
+  const { id }    = useParams();
   const isEditMode = Boolean(id);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
-  const [lastAutoSave, setLastAutoSave] = useState(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState("");
-  const [formDirty, setFormDirty] = useState(false);
+  const [isLoading,      setIsLoading]      = useState(false);
+  const [isSaving,       setIsSaving]       = useState(false);
+  const [showPreview,    setShowPreview]     = useState(true);
+  const [lastAutoSave,   setLastAutoSave]    = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus]  = useState("");
+  const [formDirty,      setFormDirty]       = useState(false);
+  const [isFavorite,     setIsFavorite]      = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingNote,   setDeletingNote]    = useState(false);
 
+  const [toast,   setToast]   = useState(null);
+  const [errors,  setErrors]  = useState({});
+
+  const toastTimer    = useRef(null);
   const autoSaveTimer = useRef(null);
   const hasLoadedNote = useRef(false);
 
+  const showToast = useCallback((message, type = "info") => {
+    setToast({ message, type });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  useEffect(() => () => {
+    window.clearTimeout(toastTimer.current);
+    window.clearTimeout(autoSaveTimer.current);
+  }, []);
+
   const [formData, setFormData] = useState({
-    title: "",
-    subject: "",
-    content: "",
-    tags: [],
+    title: "", subject: "", content: "", tags: [],
   });
-
   const [tagInput, setTagInput] = useState("");
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
 
-  const subjects = useMemo(
-    () => [
-      "Mathematics", "Physics", "Chemistry", "Biology", "English",
-      "History", "Geography", "Computer Science", "Economics", "Psychology", "Other",
-    ],
-    []
-  );
+  const subjects = useMemo(() => [
+    "Mathematics", "Physics", "Chemistry", "Biology", "English",
+    "History", "Geography", "Computer Science", "Economics", "Psychology", "Other",
+  ], []);
+
+  // ── Load note in edit mode ───────────────────────────────────────────────
 
   const fetchNote = useCallback(async () => {
     if (!isEditMode || !id) return;
@@ -73,7 +142,7 @@ export default function CreateNote() {
       const res = await apiClient.get(`/notes/${id}`);
       const noteData = extractNoteData(res?.data);
       setFormData({
-        title: noteData.title || "",
+        title:   noteData.title   || "",
         subject: noteData.subject || "",
         content: noteData.content || "",
         tags: Array.isArray(noteData.tags) ? noteData.tags : [],
@@ -83,13 +152,15 @@ export default function CreateNote() {
       setFormDirty(false);
     } catch (error) {
       console.error("Error fetching note:", error);
-      setErrors({ general: "Failed to load note" });
+      showToast("Failed to load note.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [id, isEditMode]);
+  }, [id, isEditMode, showToast]);
 
   useEffect(() => { fetchNote(); }, [fetchNote]);
+
+  // ── Autosave ─────────────────────────────────────────────────────────────
 
   const performAutoSave = useCallback(async () => {
     if (!isEditMode || !id || !hasLoadedNote.current || !formDirty) return;
@@ -116,16 +187,18 @@ export default function CreateNote() {
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   }, [formData, performAutoSave, id, isEditMode]);
 
+  // ── Form handlers ─────────────────────────────────────────────────────────
+
   const validateForm = () => {
-    const newErrors = {};
-    if (!formData.title.trim()) newErrors.title = "Title is required";
-    else if (formData.title.length < 3) newErrors.title = "Title must be at least 3 characters";
-    else if (formData.title.length > 200) newErrors.title = "Title must be less than 200 characters";
-    if (!formData.subject) newErrors.subject = "Subject is required";
-    if (!formData.content.trim()) newErrors.content = "Content is required";
-    else if (formData.content.length < 10) newErrors.content = "Content must be at least 10 characters";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e = {};
+    if (!formData.title.trim())          e.title = "Title is required";
+    else if (formData.title.length < 3)  e.title = "Title must be at least 3 characters";
+    else if (formData.title.length > 200) e.title = "Title must be less than 200 characters";
+    if (!formData.subject)               e.subject = "Subject is required";
+    if (!formData.content.trim())        e.content = "Content is required";
+    else if (formData.content.length < 10) e.content = "Content must be at least 10 characters";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleInputChange = (e) => {
@@ -149,7 +222,7 @@ export default function CreateNote() {
 
   const handleTagRemove = (tagToRemove) => {
     setFormDirty(true);
-    setFormData((prev) => ({ ...prev, tags: prev.tags.filter((tag) => tag !== tagToRemove) }));
+    setFormData((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tagToRemove) }));
   };
 
   const handleSaveNote = async () => {
@@ -157,7 +230,6 @@ export default function CreateNote() {
     try {
       setIsLoading(true);
       setErrors({});
-      setSuccessMessage("");
       let saved;
       if (isEditMode && id) {
         const res = await apiClient.put(`/notes/${id}`, formData);
@@ -171,11 +243,13 @@ export default function CreateNote() {
       if (formData.tags.length > 0) {
         await apiClient.put(`/notes/tags/${noteId}`, { tags: formData.tags });
       }
-      setSuccessMessage(isEditMode ? "Note updated successfully!" : "Note created successfully!");
+      showToast(isEditMode ? "Note updated successfully!" : "Note created successfully!", "success");
       navigate(`/notes/${noteId}`, { replace: true });
     } catch (error) {
       console.error("Error saving note:", error);
-      setErrors({ general: error?.response?.data?.message || "Failed to save note" });
+      const msg = error?.response?.data?.message || "Failed to save note";
+      setErrors({ general: msg });
+      showToast(msg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -186,8 +260,10 @@ export default function CreateNote() {
     try {
       await apiClient.put(`/notes/favorite/${id}`);
       setIsFavorite((prev) => !prev);
+      showToast(isFavorite ? "Removed from favorites" : "Added to favorites", "success");
     } catch (error) {
       console.error("Error toggling favorite:", error);
+      showToast("Failed to update favorite.", "error");
     }
   };
 
@@ -198,68 +274,79 @@ export default function CreateNote() {
     setFormDirty(true);
   };
 
-  const handleCancel = () => { navigate("/notes"); };
-
-  const handleDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!isEditMode || !id) return;
-    const confirmed = window.confirm("Delete this note?");
-    if (!confirmed) return;
     try {
-      setIsLoading(true);
+      setDeletingNote(true);
       await apiClient.delete(`/notes/${id}`);
+      setShowDeleteModal(false);
       navigate("/notes", { replace: true });
     } catch (error) {
       console.error("Delete error:", error);
-      setErrors({ general: error?.response?.data?.message || "Failed to delete note" });
+      showToast(error?.response?.data?.message || "Failed to delete note.", "error");
     } finally {
-      setIsLoading(false);
+      setDeletingNote(false);
     }
   };
+
+  // ── Loading screen ────────────────────────────────────────────────────────
 
   if (isLoading && isEditMode && !hasLoadedNote.current) {
     return (
       <Layout>
-        <div className="flex min-h-[calc(100vh-2rem)] items-center justify-center">
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
           <div className="text-center">
             <Loader className="mx-auto mb-4 h-12 w-12 animate-spin text-violet-500 dark:text-violet-300" />
-            <p className="text-slate-600 dark:text-slate-400">Loading note...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Loading note…</p>
           </div>
         </div>
       </Layout>
     );
   }
 
+  const wordCount = formData.content.split(/\s+/).filter(Boolean).length;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <Layout>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        loading={deletingNote}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+      />
 
-        {/* ── Header ── */}
-        <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-                <BookOpen className="h-5 w-5" />
+      {/* Outer wrapper — matches Notes.jsx: space-y-6 lg:space-y-8, no max-width */}
+      <div className="space-y-6 lg:space-y-8">
+
+        {/* ── Hero — violet gradient, Sparkles pill, matches Notes.jsx exactly ── */}
+        <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-7 lg:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700 shadow-sm dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300">
+                <Sparkles size={11} /> {isEditMode ? "Edit Note" : "Create Note"}
               </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-                  {isEditMode ? "Edit Note" : "Create New Note"}
-                </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Write, preview, and save your note in one place.
-                </p>
-              </div>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                {isEditMode ? "Edit Note" : "Create New Note"}
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                Write, preview, and save your note in one place.
+              </p>
             </div>
 
+            {/* Header actions */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Auto-save status */}
+              {/* Autosave status */}
               {lastAutoSave && !autoSaveStatus && (
-                <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-300">
-                  <Check className="h-4 w-4" /> Saved
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-600 dark:text-emerald-300">
+                  <Check size={14} /> Saved
                 </div>
               )}
               {autoSaveStatus && (
-                <div className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-sm text-violet-600 dark:text-violet-300">
-                  <Loader className="h-4 w-4 animate-spin" /> {autoSaveStatus}
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-600 dark:text-violet-300">
+                  <Loader size={14} className="animate-spin" /> {autoSaveStatus}
                 </div>
               )}
 
@@ -267,58 +354,51 @@ export default function CreateNote() {
               {isEditMode && (
                 <button
                   onClick={handleToggleFavorite}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition ${
+                  aria-label="Toggle favorite"
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition ${
                     isFavorite
                       ? "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-300"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                   }`}
-                  aria-label="Toggle favorite"
                 >
-                  <Star className={`h-4 w-4 ${isFavorite ? "fill-yellow-500 dark:fill-yellow-300" : ""}`} />
+                  <Star size={14} className={isFavorite ? "fill-yellow-500 dark:fill-yellow-300" : ""} />
                 </button>
               )}
 
-              {/* Cancel */}
+              {/* Back — matches NoteDetails back button style */}
               <button
-                onClick={handleCancel}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
-                aria-label="Cancel"
+                onClick={() => navigate("/notes")}
+                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-50 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-500/10"
               >
-                <X className="h-5 w-5" />
+                <ArrowLeft size={14} /> Back
               </button>
             </div>
           </div>
         </section>
 
-        {/* ── Main grid ── */}
+        {/* ── Main grid: form + preview ─────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
-          {/* ── Left: form ── */}
+          {/* ── Form column ── */}
           <div className="space-y-5 xl:col-span-2">
 
-            {/* Error / success banners */}
+            {/* Error banner */}
             {errors.general && (
               <div className="flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-500 dark:text-rose-300" />
+                <AlertCircle size={18} className="shrink-0 text-rose-500 dark:text-rose-300" />
                 <p className="text-sm text-rose-700 dark:text-rose-200">{errors.general}</p>
               </div>
             )}
-            {successMessage && (
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                <Check className="h-5 w-5 flex-shrink-0 text-emerald-500 dark:text-emerald-300" />
-                <p className="text-sm text-emerald-700 dark:text-emerald-200">{successMessage}</p>
-              </div>
-            )}
 
-            {/* Form card */}
+            {/* Form panel — rounded-3xl matching Notes.jsx panels */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
               <div className="space-y-5">
 
                 {/* Title */}
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Note Title{" "}
-                    <span className="normal-case tracking-normal font-normal text-slate-400 dark:text-slate-500">
+                    <span className="normal-case font-normal tracking-normal text-slate-400 dark:text-slate-500">
                       {formData.title.length}/200
                     </span>
                   </label>
@@ -340,7 +420,7 @@ export default function CreateNote() {
                 {/* Subject + Tags */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Subject
                     </label>
                     <select
@@ -360,8 +440,11 @@ export default function CreateNote() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Tags <span className="normal-case tracking-normal font-normal text-slate-400 dark:text-slate-500">— press Enter to add</span>
+                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Tags{" "}
+                      <span className="normal-case font-normal tracking-normal text-slate-400 dark:text-slate-500">
+                        — press Enter to add
+                      </span>
                     </label>
                     <input
                       type="text"
@@ -385,10 +468,10 @@ export default function CreateNote() {
                         <span>{tag}</span>
                         <button
                           onClick={() => handleTagRemove(tag)}
-                          className="flex items-center rounded-full transition hover:text-violet-500 dark:hover:text-violet-100"
                           aria-label={`Remove tag ${tag}`}
+                          className="flex items-center rounded-full transition hover:text-violet-500 dark:hover:text-violet-100"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X size={12} />
                         </button>
                       </div>
                     ))}
@@ -398,17 +481,19 @@ export default function CreateNote() {
                 {/* Content */}
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Content{" "}
-                      <span className="normal-case tracking-normal font-normal text-slate-400 dark:text-slate-500">
-                        {formData.content.length} chars · {formData.content.split(/\s+/).filter(Boolean).length} words
+                      <span className="normal-case font-normal tracking-normal text-slate-400 dark:text-slate-500">
+                        {formData.content.length} chars · {wordCount} words
                       </span>
                     </label>
                     <button
                       onClick={() => setShowPreview((prev) => !prev)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-violet-600 transition hover:text-violet-500 dark:text-violet-300 dark:hover:text-violet-200"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-600 transition hover:text-violet-500 dark:text-violet-300 dark:hover:text-violet-200"
                     >
-                      {showPreview ? <><EyeOff className="h-3.5 w-3.5" /> Hide Preview</> : <><Eye className="h-3.5 w-3.5" /> Show Preview</>}
+                      {showPreview
+                        ? <><EyeOff size={12} /> Hide Preview</>
+                        : <><Eye size={12} /> Show Preview</>}
                     </button>
                   </div>
 
@@ -429,44 +514,44 @@ export default function CreateNote() {
 
                 {/* Action buttons */}
                 <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+                  {/* Primary CTA — rounded-full gradient matching Notes.jsx */}
                   <button
                     onClick={handleSaveNote}
                     disabled={isLoading}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-violet-500/25 transition hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isLoading ? (
-                      <><Loader className="h-4 w-4 animate-spin" /> Saving...</>
-                    ) : (
-                      <><Save className="h-4 w-4" /> {isEditMode ? "Update Note" : "Save Note"}</>
-                    )}
+                    {isLoading
+                      ? <><Loader size={15} className="animate-spin" /> Saving…</>
+                      : <><Save size={15} /> {isEditMode ? "Update Note" : "Save Note"}</>}
                   </button>
 
+                  {/* Secondary — rounded-xl outline matching Notes.jsx secondary buttons */}
                   <button
                     onClick={handleClearForm}
                     disabled={isLoading}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                   >
-                    <Trash2 className="h-4 w-4" /> Clear Form
+                    <Trash2 size={15} /> Clear Form
                   </button>
 
                   <button
-                    onClick={handleCancel}
+                    onClick={() => navigate("/notes")}
                     disabled={isLoading}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                   >
-                    <X className="h-4 w-4" /> Cancel
+                    <X size={15} /> Cancel
                   </button>
                 </div>
 
-                {/* Delete (edit mode) */}
+                {/* Delete — edit mode only, rose tone matching Notes.jsx delete button */}
                 {isEditMode && (
                   <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
                     <button
-                      onClick={handleDelete}
+                      onClick={() => setShowDeleteModal(true)}
                       disabled={isLoading}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
                     >
-                      <Trash2 className="h-4 w-4" /> Delete Note
+                      <Trash2 size={15} /> Delete Note
                     </button>
                   </div>
                 )}
@@ -475,21 +560,23 @@ export default function CreateNote() {
             </div>
           </div>
 
-          {/* ── Right: preview ── */}
+          {/* ── Preview column ── */}
           {showPreview && (
             <div className="xl:col-span-1">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] xl:sticky xl:top-6">
-
-                <h3 className="mb-5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <h3 className="mb-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Live Preview
                 </h3>
 
                 <div className="space-y-5">
+
                   {/* Title */}
                   <div>
                     <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Title</p>
                     <p className="text-base font-bold leading-snug text-slate-900 dark:text-white">
-                      {formData.title || <span className="font-normal italic text-slate-400 dark:text-slate-600">No title yet</span>}
+                      {formData.title || (
+                        <span className="font-normal italic text-slate-400 dark:text-slate-600">No title yet</span>
+                      )}
                     </p>
                   </div>
 
@@ -497,7 +584,7 @@ export default function CreateNote() {
                   <div>
                     <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Subject</p>
                     {formData.subject ? (
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      <span className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-300">
                         {formData.subject}
                       </span>
                     ) : (
@@ -528,31 +615,31 @@ export default function CreateNote() {
                     <div className="max-h-[26rem] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                       {formData.content || (
                         <span className="italic text-slate-400 dark:text-slate-600">
-                          Start typing to see a preview here...
+                          Start typing to see a preview here…
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Stats */}
+                  {/* Stats — match Notes.jsx StatCard: text-3xl font-bold text-slate-900 */}
                   <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Characters</p>
-                        <p className="mt-1 text-xl font-bold text-violet-600 dark:text-violet-300">
+                      <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22]">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Characters</span>
+                        <span className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                           {formData.content.length}
-                        </p>
+                        </span>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Words</p>
-                        <p className="mt-1 text-xl font-bold text-violet-600 dark:text-violet-300">
-                          {formData.content.split(/\s+/).filter(Boolean).length}
-                        </p>
+                      <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22]">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Words</span>
+                        <span className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                          {wordCount}
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
 
+                </div>
               </div>
             </div>
           )}

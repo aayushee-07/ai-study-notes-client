@@ -30,19 +30,10 @@ import {
   BadgeInfo,
   ChevronRight,
   Camera,
-  Activity,
   CheckCircle2,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getNoteType(note) {
-  const source = String(note?.source || note?.fileType || note?.type || "").toLowerCase();
-  const name = String(note?.fileName || note?.originalName || note?.title || "").toLowerCase();
-  if (source.includes("pdf") || name.endsWith(".pdf") || note?.pdfUrl || note?.fileUrl) return "PDF";
-  if (note?.aiGenerated || note?.generatedByAI || source.includes("ai")) return "AI Note";
-  return "Manual Note";
-}
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -78,7 +69,6 @@ function Toast({ toast, onClose }) {
   );
 }
 
-/** Matches Favorites StatCard exactly */
 function StatCard({ label, value, icon, valueColor, iconBg, muted }) {
   return (
     <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22]">
@@ -109,7 +99,7 @@ function NoteTypeBadge({ type }) {
   );
 }
 
-function Field({ label, icon: Icon, type = "text", value, onChange, placeholder, darkMode = true }) {
+function Field({ label, icon: Icon, type = "text", value, onChange, placeholder }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-zinc-300">{label}</label>
@@ -169,10 +159,11 @@ function TabButton({ active, onClick, label }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${active
-        ? "bg-indigo-600 text-white"
-        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-        }`}
+      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+        active
+          ? "bg-indigo-600 text-white"
+          : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+      }`}
     >
       {label}
     </button>
@@ -183,17 +174,18 @@ function SkeletonBlock({ className }) {
   return <div className={`animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800 ${className}`} />;
 }
 
+// FIX #2: DashboardSkeleton uses lg: breakpoints to match actual grids
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 lg:space-y-8">
       <SkeletonBlock className="h-40 rounded-3xl" />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => <SkeletonBlock key={i} className="h-28" />)}
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => <SkeletonBlock key={i} className="h-28" />)}
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SkeletonBlock className="h-72" />
         <SkeletonBlock className="h-72" />
       </div>
@@ -232,8 +224,13 @@ export default function Profile() {
     recentChats: [],
   });
 
-  const notify = (message, type = "success") => setToast({ message, type, id: Date.now() });
-  const getErrorMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
+  // FIX #4: notify wrapped in useCallback so it doesn't recreate every render
+  const notify = useCallback((message, type = "success") => {
+    setToast({ message, type, id: Date.now() });
+  }, []);
+
+  const getErrorMessage = (err, fallback) =>
+    err?.response?.data?.message || err?.message || fallback;
 
   const fetchDashboard = useCallback(async ({ isRefresh = false } = {}) => {
     if (!isRefresh) setLoading(true);
@@ -275,9 +272,10 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notify]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3000);
@@ -292,7 +290,13 @@ export default function Profile() {
   const recentChatsPreview = (dashboard.recentChats || []).slice(0, 3);
 
   const completion = useMemo(() => {
-    const fields = [profile?.name, profile?.email, profile?.role, profile?.avatarUrl || profile?.avatar, profile?.createdAt || profile?.joinDate];
+    const fields = [
+      profile?.name,
+      profile?.email,
+      profile?.role,
+      profile?.avatarUrl || profile?.avatar,
+      profile?.createdAt || profile?.joinDate,
+    ];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100) || 0;
   }, [profile]);
 
@@ -323,19 +327,22 @@ export default function Profile() {
     formData.append("avatar", file);
     setSavingAvatar(true);
     try {
-      const res = await apiClient.post("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      const updatedAvatar = res?.data?.avatarUrl || res?.data?.user?.avatarUrl || res?.data?.user?.avatar || res?.data?.avatar || URL.createObjectURL(file);
-      setDashboard((prev) => ({ ...prev, profile: { ...(prev.profile || {}), avatarUrl: updatedAvatar, avatar: updatedAvatar } }));
+      const res = await apiClient.post("/auth/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const updatedAvatar =
+        res?.data?.avatarUrl ||
+        res?.data?.user?.avatarUrl ||
+        res?.data?.user?.avatar ||
+        res?.data?.avatar ||
+        URL.createObjectURL(file);
+
+      setDashboard((prev) => ({
+        ...prev,
+        profile: { ...(prev.profile || {}), avatarUrl: updatedAvatar, avatar: updatedAvatar },
+      }));
       notify("Avatar updated successfully.");
-
-      window.dispatchEvent(
-        new CustomEvent("profile-updated", {
-          detail: {
-            avatar: updatedAvatar,
-          },
-        })
-      );
-
+      window.dispatchEvent(new CustomEvent("profile-updated", { detail: { avatar: updatedAvatar } }));
       await fetchDashboard({ isRefresh: true });
     } catch (err) {
       notify(getErrorMessage(err, "Could not upload avatar."), "error");
@@ -351,11 +358,8 @@ export default function Profile() {
     try {
       await apiClient.put("/auth/profile", { name: editForm.name, email: editForm.email });
       notify("Profile updated successfully.");
-
       window.dispatchEvent(new Event("profile-updated"));
-
       setEditOpen(false);
-
       await fetchDashboard({ isRefresh: true });
     } catch (err) {
       notify(getErrorMessage(err, "Could not update profile."), "error");
@@ -369,7 +373,10 @@ export default function Profile() {
     if (pwForm.newPassword !== pwForm.confirm) return notify("Passwords do not match.", "error");
     setPwLoading(true);
     try {
-      await apiClient.put("/auth/change-password", { oldPassword: pwForm.oldPassword, newPassword: pwForm.newPassword });
+      await apiClient.put("/auth/change-password", {
+        oldPassword: pwForm.oldPassword,
+        newPassword: pwForm.newPassword,
+      });
       notify("Password changed successfully.");
       setPwOpen(false);
       setPwForm({ oldPassword: "", newPassword: "", confirm: "" });
@@ -380,6 +387,7 @@ export default function Profile() {
     }
   };
 
+  // FIX #6: Clear all auth keys on delete (matches Sidebar)
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") return notify('Type "DELETE" to confirm.', "error");
     setDeleteLoading(true);
@@ -387,6 +395,8 @@ export default function Profile() {
       await apiClient.delete("/auth/delete-account");
       notify("Account deleted successfully.");
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("refreshToken");
       navigate("/login");
     } catch (err) {
       notify(getErrorMessage(err, "Could not delete account."), "error");
@@ -394,6 +404,25 @@ export default function Profile() {
       setDeleteLoading(false);
     }
   };
+
+  // FIX #5: Reset deleteConfirmText when Settings modal closes
+  const handleSettingsClose = () => {
+    setSettingsOpen(false);
+    setDeleteConfirmText("");
+    setSettingsTab("general");
+  };
+
+  const avatar = profile?.avatarUrl || profile?.avatar || "";
+
+  // FIX #3: Safe avatarSrc — handle missing baseURL gracefully
+  const avatarSrc = useMemo(() => {
+    if (!avatar) return "";
+    if (avatar.startsWith("http") || avatar.startsWith("blob:")) return avatar;
+    const base = (apiClient.defaults?.baseURL || "")
+      .replace("/api", "")
+      .replace(/\/$/, "");
+    return `${base}${avatar.startsWith("/") ? "" : "/"}${avatar}`;
+  }, [avatar]);
 
   return (
     <Layout>
@@ -404,19 +433,15 @@ export default function Profile() {
           <DashboardSkeleton />
         ) : (
           <>
-            {/* ── Profile Header ──────────────────────────────────────────── */}
+            {/* Profile Header */}
             <section className="rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-7 lg:p-8">
               <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   {/* Avatar */}
                   <div className="relative shrink-0 self-start">
-                    {profile?.avatarUrl || profile?.avatar ? (
+                    {avatarSrc ? (
                       <img
-                        src={
-                          (profile.avatarUrl || profile.avatar)?.startsWith("http")
-                            ? (profile.avatarUrl || profile.avatar)
-                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${profile.avatarUrl || profile.avatar}`
-                        }
+                        src={avatarSrc}
                         alt="Profile avatar"
                         className="h-16 w-16 rounded-2xl border border-white/20 object-cover shadow-md sm:h-20 sm:w-20"
                       />
@@ -446,16 +471,21 @@ export default function Profile() {
                       <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm dark:border-indigo-500/20 dark:bg-slate-900 dark:text-indigo-300">
                         <Shield size={11} /> {profile?.role || "User"}
                       </span>
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${profile?.status === "inactive"
-                        ? "border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                        : "border-emerald-200 bg-white text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300"
-                        }`}>
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                        profile?.status === "inactive"
+                          ? "border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                          : "border-emerald-200 bg-white text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300"
+                      }`}>
                         <CheckCircle size={11} /> {profile?.status === "inactive" ? "Inactive" : "Active"}
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-                      <span className="inline-flex items-center gap-1.5"><Mail size={13} /><span className="truncate">{profile?.email || "—"}</span></span>
-                      <span className="inline-flex items-center gap-1.5"><Calendar size={13} />{formatJoined(profile?.joinDate || profile?.createdAt)}</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Mail size={13} /><span className="truncate">{profile?.email || "—"}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Calendar size={13} />{formatJoined(profile?.joinDate || profile?.createdAt)}
+                      </span>
                     </div>
                     {/* Completion bar */}
                     <div className="mt-3 w-full max-w-xs">
@@ -464,7 +494,10 @@ export default function Profile() {
                         <span>{completion}%</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                        <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 transition-all" style={{ width: `${completion}%` }} />
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 transition-all"
+                          style={{ width: `${completion}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -494,8 +527,8 @@ export default function Profile() {
               </div>
             </section>
 
-            {/* ── Activity Overview (4-col stat cards) ─────────────────────── */}
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {/* FIX #1: Activity Overview — lg:grid-cols-4 */}
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="Last Login"
                 value={formatDateTime(stats.lastLoginAt)}
@@ -530,7 +563,7 @@ export default function Profile() {
               />
             </section>
 
-            {/* ── Statistics (6 cards) ─────────────────────────────────────── */}
+            {/* FIX #1: Statistics — lg:grid-cols-3 */}
             <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -538,7 +571,7 @@ export default function Profile() {
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your study activity at a glance</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[
                   { label: "Total Notes", value: stats.totalNotes, icon: <FileText size={18} />, iconBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300", color: "text-indigo-600 dark:text-indigo-300" },
                   { label: "Favorite Notes", value: stats.favoriteNotes, icon: <Star size={18} />, iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-300", color: "text-amber-600 dark:text-amber-300" },
@@ -558,8 +591,8 @@ export default function Profile() {
               </div>
             </section>
 
-            {/* ── Quick Actions + Recent AI Chats (2-col) ─────────────────── */}
-            <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {/* FIX #1: Quick Actions + Recent Chats — lg:grid-cols-2 */}
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* Quick Actions */}
               <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
                 <div className="mb-4 flex items-center justify-between">
@@ -614,7 +647,7 @@ export default function Profile() {
                               <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">{chat.title || "AI Chat"}</span>
                               <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300">Chat</span>
                             </div>
-                            {chat.preview || chat.message ? (
+                            {(chat.preview || chat.message) ? (
                               <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{chat.preview || chat.message}</p>
                             ) : null}
                             <div className="mt-2 flex items-center justify-between gap-2">
@@ -636,7 +669,7 @@ export default function Profile() {
               </div>
             </section>
 
-            {/* ── Notes (tabbed) ───────────────────────────────────────────── */}
+            {/* FIX #7: Notes tabbed section — lg:grid-cols-3 */}
             <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -649,9 +682,13 @@ export default function Profile() {
                 </div>
               </div>
               {visibleNotes.length === 0 ? (
-                <EmptyCard icon={FileText} title={tab === "recent" ? "No recent notes" : "No favorite notes"} description="Notes will appear here after you create or favorite them." />
+                <EmptyCard
+                  icon={FileText}
+                  title={tab === "recent" ? "No recent notes" : "No favorite notes"}
+                  description="Notes will appear here after you create or favorite them."
+                />
               ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {visibleNotes.map((note) => (
                     <article key={note._id || note.id} className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-violet-500/20">
                       <div className="flex items-start gap-3">
@@ -662,13 +699,20 @@ export default function Profile() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <NoteTypeBadge type={note.type} />
                           </div>
-                          <h3 className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900 dark:text-white">{note.title || "Untitled Note"}</h3>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{note.preview || note.content || "No preview available."}</p>
+                          <h3 className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900 dark:text-white">
+                            {note.title || "Untitled Note"}
+                          </h3>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            {note.preview || note.content || "No preview available."}
+                          </p>
                           <div className="mt-2 flex items-center justify-between">
                             <span className="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                               <Clock size={11} /> {formatDateTime(note.createdAt)}
                             </span>
-                            <button onClick={() => navigate(`/notes/${note._id || note.id}`)} className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-indigo-700">
+                            <button
+                              onClick={() => navigate(`/notes/${note._id || note.id}`)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
+                            >
                               View <ArrowRight size={11} />
                             </button>
                           </div>
@@ -680,8 +724,8 @@ export default function Profile() {
               )}
             </section>
 
-            {/* ── AI Usage History + Account Status (2-col) ───────────────── */}
-            <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {/* FIX #1: AI Usage + Account Status — lg:grid-cols-2 */}
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* AI Usage History */}
               <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
                 <div className="mb-4 flex items-center justify-between">
@@ -702,13 +746,17 @@ export default function Profile() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">{item.title || item.type || "AI Generation"}</span>
+                            <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                              {item.title || item.type || "AI Generation"}
+                            </span>
                             <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
                               {item.toolType || item.model || "AI"}
                             </span>
                           </div>
                           {(item.prompt || item.description) && (
-                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{item.prompt || item.description}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                              {item.prompt || item.description}
+                            </p>
                           )}
                           <span className="mt-2 inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                             <Clock size={11} /> {formatDateTime(item.createdAt || item.timestamp)}
@@ -742,7 +790,7 @@ export default function Profile() {
         )}
       </div>
 
-      {/* ── Modals ───────────────────────────────────────────────────────────── */}
+      {/* Modals */}
       {editOpen && (
         <Modal title="Edit Profile" onClose={() => setEditOpen(false)}>
           <form onSubmit={handleProfileSave} className="space-y-4">
@@ -778,8 +826,9 @@ export default function Profile() {
         </Modal>
       )}
 
+      {/* FIX #5: Settings modal uses handleSettingsClose to reset deleteConfirmText */}
       {settingsOpen && (
-        <Modal title="Settings" onClose={() => setSettingsOpen(false)}>
+        <Modal title="Settings" onClose={handleSettingsClose}>
           <div className="mb-4 flex gap-2">
             <TabButton active={settingsTab === "general"} onClick={() => setSettingsTab("general")} label="General" />
             <TabButton active={settingsTab === "security"} onClick={() => setSettingsTab("security")} label="Security" />
@@ -798,7 +847,7 @@ export default function Profile() {
 
           {settingsTab === "security" && (
             <button
-              onClick={() => { setSettingsOpen(false); setPwOpen(true); }}
+              onClick={() => { handleSettingsClose(); setPwOpen(true); }}
               className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               <span className="inline-flex items-center gap-2"><Lock size={14} /> Change Password</span>
@@ -810,14 +859,26 @@ export default function Profile() {
             <div className="space-y-4">
               <div className="flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
                 <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600 dark:text-rose-300" />
-                <p className="text-sm leading-5 text-rose-700 dark:text-rose-200">This action is permanent. All notes, AI usage history, and account data will be removed.</p>
+                <p className="text-sm leading-5 text-rose-700 dark:text-rose-200">
+                  This action is permanent. All notes, AI usage history, and account data will be removed.
+                </p>
               </div>
-              <Field label='Type DELETE to confirm' value={deleteConfirmText} onChange={setDeleteConfirmText} placeholder="DELETE" />
+              <Field
+                label='Type DELETE to confirm'
+                value={deleteConfirmText}
+                onChange={setDeleteConfirmText}
+                placeholder="DELETE"
+              />
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setSettingsOpen(false)} className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <button type="button" onClick={handleSettingsClose} className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   Cancel
                 </button>
-                <button type="button" onClick={handleDeleteAccount} disabled={deleteLoading || deleteConfirmText !== "DELETE"} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading || deleteConfirmText !== "DELETE"}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                >
                   {deleteLoading && <Loader2 size={14} className="animate-spin" />} Delete Permanently
                 </button>
               </div>

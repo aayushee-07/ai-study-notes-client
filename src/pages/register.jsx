@@ -1,4 +1,3 @@
-// src/pages/Register.jsx
 import { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import apiClient from "../lib/apiClient";
@@ -10,7 +9,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  CheckCircle2,
   CircleAlert,
   ShieldCheck,
   UserPlus,
@@ -75,13 +73,15 @@ export default function Register({ setUser }) {
 
       const userData = { ...res.data.user, token: res.data.token };
       localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
+      localStorage.setItem("token", res.data.token);
+
+      if (setUser) setUser(userData);
       navigate("/dashboard");
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Registration failed"
+          err.response?.data?.error ||
+          "Registration failed"
       );
     } finally {
       setLoading(false);
@@ -89,40 +89,40 @@ export default function Register({ setUser }) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white transition-colors duration-300 dark:bg-slate-950">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(196,181,253,0.18),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)]" />
-      <div className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full bg-violet-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute -left-24 bottom-0 h-96 w-96 rounded-full bg-fuchsia-400/10 blur-3xl" />
+    <div className="relative h-svh overflow-y-auto overflow-x-hidden bg-white transition-colors duration-300 dark:bg-slate-950">
+      <div className="pointer-events-none absolute inset-0 md:bg-fixed bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(196,181,253,0.18),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)]" />
+      <div className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-violet-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 bottom-0 h-80 w-80 rounded-full bg-fuchsia-400/10 blur-3xl" />
 
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-500 shadow-lg shadow-violet-500/25">
-              <BookOpenText className="h-8 w-8 text-white" />
+      <div className="relative flex min-h-full items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="w-full max-w-sm">
+          <div className="mb-4 text-center sm:mb-5">
+            <div className="mx-auto mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-purple-500 shadow-lg shadow-violet-500/25">
+              <BookOpenText className="h-6 w-6 text-white" />
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-4 py-1 text-sm font-medium text-violet-700 shadow-sm backdrop-blur dark:border-violet-500/20 dark:bg-slate-900/70 dark:text-violet-300">
-              <Sparkles className="h-4 w-4" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-violet-700 shadow-sm backdrop-blur dark:border-violet-500/20 dark:bg-slate-900/70 dark:text-violet-300">
+              <Sparkles className="h-3.5 w-3.5" />
               AI Study Notes
             </div>
 
-            <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[28px]">
               Create Your Account 🚀
             </h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
               Start organizing your notes with AI-powered learning.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_20px_60px_rgba(124,58,237,0.12)] backdrop-blur-xl transition-all duration-300 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-8">
+          <div className="rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_50px_rgba(124,58,237,0.10)] backdrop-blur-xl transition-all duration-300 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-[0_18px_50px_rgba(0,0,0,0.35)] sm:p-5">
             {error && (
-              <div className="mb-5 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+              <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 sm:text-sm">
                 <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <Field label="Full Name" icon={<UserRound className="h-4 w-4" />}>
                 <input
                   type="text"
@@ -134,7 +134,7 @@ export default function Register({ setUser }) {
                     setName(e.target.value);
                     setError("");
                   }}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
                 />
               </Field>
 
@@ -149,7 +149,7 @@ export default function Register({ setUser }) {
                     setEmail(e.target.value);
                     setError("");
                   }}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
                 />
               </Field>
 
@@ -165,7 +165,7 @@ export default function Register({ setUser }) {
                       setPassword(e.target.value);
                       setError("");
                     }}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-12 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
                   />
                   <button
                     type="button"
@@ -173,21 +173,17 @@ export default function Register({ setUser }) {
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
 
                 {password && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                         Password strength
                       </span>
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                         {passwordStrength.label}
                       </span>
                     </div>
@@ -213,7 +209,7 @@ export default function Register({ setUser }) {
                       setConfirmPassword(e.target.value);
                       setError("");
                     }}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-12 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
                   />
                   <button
                     type="button"
@@ -221,16 +217,12 @@ export default function Register({ setUser }) {
                     aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                   >
-                    {showConfirm ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </Field>
 
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 pt-0.5">
                 <input
                   id="terms"
                   type="checkbox"
@@ -241,10 +233,7 @@ export default function Register({ setUser }) {
                   }}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 dark:border-slate-700"
                 />
-                <label
-                  htmlFor="terms"
-                  className="text-sm leading-6 text-slate-600 dark:text-slate-400"
-                >
+                <label htmlFor="terms" className="text-xs leading-5 text-slate-600 dark:text-slate-400 sm:text-sm">
                   I agree to the{" "}
                   <button
                     type="button"
@@ -258,7 +247,7 @@ export default function Register({ setUser }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:from-violet-500 hover:to-purple-500 hover:shadow-xl hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-70"
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:from-violet-500 hover:to-purple-500 hover:shadow-xl hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? (
                   <>
@@ -274,13 +263,13 @@ export default function Register({ setUser }) {
               </button>
             </form>
 
-            <div className="my-6 flex items-center gap-3">
+            <div className="my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-              <span className="text-xs text-slate-400">or</span>
+              <span className="text-[11px] text-slate-400">or</span>
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
 
-            <p className="text-center text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
               Already have an account?{" "}
               <Link
                 to="/login"
@@ -291,8 +280,8 @@ export default function Register({ setUser }) {
             </p>
           </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            © {new Date().getFullYear()} AI Study Notes • Learn smarter, not harder
+          <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
+            © {new Date().getFullYear()} AI Study Notes
           </p>
         </div>
       </div>
@@ -302,8 +291,8 @@ export default function Register({ setUser }) {
 
 function Field({ label, icon, children }) {
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-slate-700 dark:text-slate-300 sm:text-sm">
         {label}
       </label>
       <div className="relative">

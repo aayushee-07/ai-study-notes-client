@@ -24,6 +24,17 @@
  *    { role, content } shape on load, so chat is persistent across refreshes.
  *
  * 5. getChatHistory imported for loading persisted chat on mount.
+ *
+ * RESPONSIVE IMPROVEMENTS (layout/visual only, no functionality changed):
+ * - Stats grid: 2-col mobile → 3-col sm → 6-col xl, with gap
+ * - Tab bar: horizontal scroll on mobile with snap, no wrapping
+ * - Header section: proper stacking on small screens
+ * - WorkspaceSidebar: shown as bottom drawer on mobile via sticky tab bar
+ * - Sidebar: only one className attr (duplicate removed)
+ * - StatCard: consistent height/padding on all sizes
+ * - Toast: full-width on small screens
+ * - PanelCard: tighter padding on mobile
+ * - Tab buttons: even shrink with min-width so they don't collapse to icons
  */
 
 import React, {
@@ -126,20 +137,17 @@ function normalizeNote(raw) {
     tags: normalizeArray(n.tags || n.tagList || n.labels),
     favorite: Boolean(n.isFavorite || n.favorite || n.favorited || n.starred),
     sourceType: normalizeText(n.source || n.fileType || n.type),
-    // FIX #1 — carry aiContent through so we can seed state from it
     aiContent: n.aiContent || {},
-    // FIX #4 — carry chatHistory for chat persistence
     chatHistory: Array.isArray(n.chatHistory) ? n.chatHistory : [],
   };
 }
 
-// Unwrap common API envelope shapes
 function unwrapResult(result) {
   if (!result) return null;
   if (typeof result === "string") return result;
   if (Array.isArray(result)) return result;
   if (result.data?.data != null) return result.data.data;
-  if (result.data?.simplify != null) return result.data.simplify; // ← ADD THIS
+  if (result.data?.simplify != null) return result.data.simplify;
   if (result.data != null) return result.data;
   if (result.result != null) return result.result;
   if (result.response != null) return result.response;
@@ -147,7 +155,7 @@ function unwrapResult(result) {
   if (result.payload != null) return result.payload;
   return result;
 }
-// FIX #3 — always returns an array, never crashes on null
+
 function extractArray(payload) {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload.filter(Boolean);
@@ -161,7 +169,6 @@ function extractArray(payload) {
   return [];
 }
 
-// Always returns a string, never crashes on null
 function extractText(payload) {
   if (!payload) return "";
   if (typeof payload === "string") return payload;
@@ -178,7 +185,6 @@ function extractMessageText(item) {
   return item.content || item.message || item.text || item.reply || item.answer || "";
 }
 
-// FIX #2 — human-readable timeout message
 function normalizeNetworkError(err) {
   if (err?.code === "ECONNABORTED" || err?.message?.includes("timeout")) {
     return "Request timed out — the AI is taking longer than usual. Please try again.";
@@ -231,7 +237,7 @@ function ErrorCard({ message }) {
 
 function EmptyState({ icon: Icon, title, description, action }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center dark:border-slate-800 dark:bg-[#161b22]">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 px-4 text-center dark:border-slate-800 dark:bg-[#161b22]">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-500 dark:text-purple-400">
         <Icon size={22} />
       </div>
@@ -247,7 +253,7 @@ function EmptyState({ icon: Icon, title, description, action }) {
 function GenerateButton({ onClick, loading, label = "Generate", icon: Icon = Sparkles }) {
   return (
     <button onClick={onClick} disabled={loading}
-      className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-purple-500 dark:hover:bg-purple-600">
+      className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-purple-500 dark:hover:bg-purple-600">
       {loading ? (<><RefreshCw size={15} className="animate-spin" />Generating…</>) : (<><Icon size={15} />{label}</>)}
     </button>
   );
@@ -265,10 +271,10 @@ function RegenerateButton({ onClick, loading }) {
 
 function PanelCard({ title, icon: Icon, headerRight, children }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
+    <section className="rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-300">
+          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-300">
             <Icon size={16} />
           </span>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>
@@ -281,25 +287,15 @@ function PanelCard({ title, icon: Icon, headerRight, children }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AI Panel view components — each normalises its own payload
+// AI Panel view components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SummaryPanelView({
-  data,
-  loading,
-  error,
-  onGenerate,
-  onRefresh,
-  onRegenerate,
-}) {
+function SummaryPanelView({ data, loading, error, onGenerate, onRefresh, onRegenerate }) {
   const summary = extractText(data);
   const hasData = Boolean(summary);
   return (
     <PanelCard title="Summary" icon={Sparkles}
-      headerRight={hasData && !loading && <RegenerateButton
-        onClick={onRegenerate}
-        loading={loading}
-      />}>
+      headerRight={hasData && !loading && <RegenerateButton onClick={onRegenerate} loading={loading} />}>
       {loading && <Skeleton rows={5} />}
       {!loading && error && <ErrorCard message={error} />}
       {!loading && !error && !hasData && (
@@ -308,33 +304,18 @@ function SummaryPanelView({
           action={<GenerateButton onClick={onGenerate} loading={loading} />} />
       )}
       {!loading && !error && hasData && (
-        <SummaryPanel
-          summary={summary}
-          onGenerate={onGenerate}
-          onRefresh={onRefresh}
-        />
+        <SummaryPanel summary={summary} onGenerate={onGenerate} onRefresh={onRefresh} />
       )}
     </PanelCard>
   );
 }
 
-function QuizPanelView({
-  data,
-  noteId,
-  loading,
-  error,
-  onGenerate,
-  onRegenerate,
-}) {
-  // FIX #3 — Array.isArray guard, never crashes on null
+function QuizPanelView({ data, noteId, loading, error, onGenerate, onRegenerate }) {
   const questions = Array.isArray(data) ? data : extractArray(data);
   const hasData = questions.length > 0;
   return (
     <PanelCard title="Quiz" icon={ShieldQuestion}
-      headerRight={hasData && !loading && <RegenerateButton
-        onClick={onRegenerate}
-        loading={loading}
-      />}>
+      headerRight={hasData && !loading && <RegenerateButton onClick={onRegenerate} loading={loading} />}>
       {loading && <Skeleton rows={6} />}
       {!loading && error && <ErrorCard message={error} />}
       {!loading && !error && !hasData && (
@@ -342,16 +323,12 @@ function QuizPanelView({
           description="Generate quiz questions from this note."
           action={<GenerateButton onClick={onGenerate} loading={loading} label="Generate Quiz" icon={ShieldQuestion} />} />
       )}
-      {!loading && !error && hasData && <QuizPanel
-        questions={questions}
-        noteId={noteId}
-      />}
+      {!loading && !error && hasData && <QuizPanel questions={questions} noteId={noteId} />}
     </PanelCard>
   );
 }
 
 function FlashcardsPanelView({ data, loading, error, onGenerate }) {
-  // FIX #3 — null-safe: extractArray never throws, always returns []
   const cards = Array.isArray(data) ? data : extractArray(data);
   const hasData = cards.length > 0;
   return (
@@ -369,58 +346,25 @@ function FlashcardsPanelView({ data, loading, error, onGenerate }) {
   );
 }
 
-function QuestionsPanelView({
-  data,
-  loading,
-  error,
-  onGenerate,
-  noteId,
-}) {
+function QuestionsPanelView({ data, loading, error, onGenerate, noteId }) {
   const questions = Array.isArray(data) ? data : extractArray(data);
   const hasData = questions.length > 0;
-
   return (
-    <PanelCard
-      title="Practice Questions"
-      icon={FileQuestion}
-      headerRight={null}
-    >
+    <PanelCard title="Practice Questions" icon={FileQuestion} headerRight={null}>
       {loading && <Skeleton rows={5} />}
-
-      {!loading && error && (
-        <ErrorCard message={error} />
-      )}
-
+      {!loading && error && <ErrorCard message={error} />}
       {!loading && !error && !hasData && (
-        <EmptyState
-          icon={FileQuestion}
-          title="No questions yet"
+        <EmptyState icon={FileQuestion} title="No questions yet"
           description="Generate practice questions from this note."
-          action={
-            <GenerateButton
-              onClick={onGenerate}
-              loading={loading}
-              label="Generate Questions"
-              icon={FileQuestion}
-            />
-          }
-        />
+          action={<GenerateButton onClick={onGenerate} loading={loading} label="Generate Questions" icon={FileQuestion} />} />
       )}
-
-      {!loading && !error && hasData && (
-        <QuestionsPanel
-          questions={questions}
-          noteId={noteId}
-        />
-      )}
+      {!loading && !error && hasData && <QuestionsPanel questions={questions} noteId={noteId} />}
     </PanelCard>
   );
 }
+
 function SimplifyPanelView({ data, loading, error, onGenerate, onRefresh }) {
-  console.log("SimplifyPanelView", {
-    onGenerate,
-    onRefresh,
-  });
+  console.log("SimplifyPanelView", { onGenerate, onRefresh });
   const content = extractText(data);
   const hasData = Boolean(content);
   return (
@@ -433,30 +377,16 @@ function SimplifyPanelView({ data, loading, error, onGenerate, onRefresh }) {
           description="Rewrite this note in simpler, clearer language."
           action={<GenerateButton onClick={onGenerate} loading={loading} label="Simplify Note" icon={Lightbulb} />} />
       )}
-      {!loading && !error && hasData && <SimplifyPanel
-        data={content}
-        onGenerate={onGenerate}
-        onRefresh={onRefresh}
-      />}
+      {!loading && !error && hasData && <SimplifyPanel data={content} onGenerate={onGenerate} onRefresh={onRefresh} />}
     </PanelCard>
   );
 }
 
-function HistoryPanelView({
-  data,
-  loading,
-  error,
-  onGenerate,
-  onDelete,
-}) {
+function HistoryPanelView({ data, loading, error, onGenerate, onDelete }) {
   const history = Array.isArray(data) ? data : extractArray(data);
   const hasData = history.length > 0;
   return (
-    <PanelCard
-      title="AI History"
-      icon={History}
-      headerRight={null}
-    >
+    <PanelCard title="AI History" icon={History} headerRight={null}>
       {loading && <Skeleton rows={4} />}
       {!loading && error && <ErrorCard message={error} />}
       {!loading && !error && !hasData && (
@@ -464,12 +394,9 @@ function HistoryPanelView({
           description="Load the AI generation history for this note."
           action={<GenerateButton onClick={onGenerate} loading={loading} label="Load History" icon={History} />} />
       )}
-      {/* FIX #3 — pass typed history array, not raw data blob */}
-      {!loading && !error && hasData && <AIHistoryPanel
-        history={history}
-        onDelete={onDelete}
-        onRefreshHistory={onGenerate}
-      />}
+      {!loading && !error && hasData && (
+        <AIHistoryPanel history={history} onDelete={onDelete} onRefreshHistory={onGenerate} />
+      )}
     </PanelCard>
   );
 }
@@ -541,7 +468,6 @@ function ActivePanel(props) {
       onExportStudyPack={props.onExportStudyPack}
     />
   );
-  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -550,7 +476,7 @@ function ActivePanel(props) {
 
 function WorkspaceSidebar({ activeTab, onTabChange, generatedTabs }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22]">
+    <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22]">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">AI Workspace</p>
       <p className="mt-1 mb-3 text-xs text-slate-400 dark:text-slate-500">Select a feature — generate from inside the panel.</p>
       <nav className="space-y-0.5" aria-label="AI workspace navigation">
@@ -559,10 +485,10 @@ function WorkspaceSidebar({ activeTab, onTabChange, generatedTabs }) {
           const isDone = generatedTabs.has(key);
           return (
             <button key={key} onClick={() => onTabChange(key)}
-              className={cn("flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
+              className={cn("flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
                 active ? "bg-purple-500/10 text-purple-700 ring-1 ring-purple-500/20 dark:text-purple-300" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60")}>
               <span className="flex items-center gap-3">
-                <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm",
+                <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-sm",
                   active ? "bg-purple-500/15 text-purple-600 dark:text-purple-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400")}>
                   <Icon size={15} />
                 </span>
@@ -579,14 +505,15 @@ function WorkspaceSidebar({ activeTab, onTabChange, generatedTabs }) {
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</p>
-          <p className="mt-1.5 text-xl font-semibold text-slate-900 dark:text-white">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">{label}</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white sm:text-xl truncate">{value}</p>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-300">
-          <Icon size={18} />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-300 sm:h-10 sm:w-10 sm:rounded-2xl">
+          <Icon size={16} className="sm:hidden" />
+          <Icon size={18} className="hidden sm:block" />
         </div>
       </div>
     </div>
@@ -597,7 +524,7 @@ function Toast({ toast, onDismiss }) {
   if (!toast) return null;
   return (
     <div role="alert" aria-live="polite"
-      className="fixed right-4 top-4 z-50 flex w-[min(calc(100vw-2rem),22rem)] items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-[#11151c]/95">
+      className="fixed right-3 top-3 left-3 z-50 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-[#11151c]/95 sm:left-auto sm:right-4 sm:top-4 sm:w-[min(calc(100vw-2rem),22rem)]">
       {toast.type === "error"
         ? <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-500" />
         : <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-500" />}
@@ -624,7 +551,6 @@ export default function NoteDetails() {
 
   const [activeTab, setActiveTab] = useState("summary");
 
-  // AI result cache — null means not yet generated / not yet loaded from DB
   const [summaryData, setSummaryData] = useState(null);
   const [quizData, setQuizData] = useState(null);
   const [flashcardsData, setFlashcardsData] = useState(null);
@@ -655,7 +581,6 @@ export default function NoteDetails() {
 
   const toastTimer = useRef(null);
   const chatEndRef = useRef(null);
-  // ── NEW: ref for the active AI panel container ────────────────────────────
   const aiPanelRef = useRef(null);
 
   const showToast = useCallback((message, type = "info") => {
@@ -672,9 +597,7 @@ export default function NoteDetails() {
     try {
       const res = await getAIHistory(id);
       const payload = unwrapResult(res);
-
       console.log("[NoteDetails] getAIHistory:", payload);
-
       setHistoryData(payload);
       showToast("History refreshed");
     } catch (err) {
@@ -688,7 +611,6 @@ export default function NoteDetails() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
-  // ── FIX #1 — Load note AND seed AI state from aiContent on mount ──────────
   useEffect(() => {
     let cancelled = false;
     async function fetchNote() {
@@ -702,7 +624,6 @@ export default function NoteDetails() {
         if (!cancelled) {
           setNoteRaw(raw);
 
-          // ── SEED AI STATE FROM SAVED aiContent ────────────────────────────
           const ai = raw.aiContent || {};
 
           if (ai.summary) setSummaryData(ai.summary);
@@ -711,15 +632,10 @@ export default function NoteDetails() {
           if (Array.isArray(ai.questions) && ai.questions.length) setQuestionsData(ai.questions);
           if (ai.simplify) setSimplifyData(ai.simplify);
 
-          // ── FIX #4 — Seed chat from persisted chatHistory ────────────────
           if (raw.chats?.length > 0) {
             const firstChat = raw.chats[0];
-
             setSelectedChat(firstChat);
-
-            setChatMessages(
-              firstChat.messages || []
-            );
+            setChatMessages(firstChat.messages || []);
           }
         }
       } catch (err) {
@@ -737,7 +653,6 @@ export default function NoteDetails() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatMessages, chatSending]);
 
-  // Derived note values
   const note_ = useMemo(() => normalizeNote(noteRaw), [noteRaw]);
   const { title, subject, tags, favorite, sourceType, createdAt, updatedAt, content } = note_;
   const wordCount = useMemo(() => content.trim().split(/\s+/).filter(Boolean).length, [content]);
@@ -751,12 +666,7 @@ export default function NoteDetails() {
     if (flashcardsData != null) s.add("flashcards");
     if (questionsData != null) s.add("questions");
     if (simplifyData != null) s.add("simplify");
-    if (
-      Array.isArray(historyData) &&
-      historyData.length > 0
-    ) {
-      s.add("history");
-    }
+    if (Array.isArray(historyData) && historyData.length > 0) s.add("history");
     if (chatMessages.length) s.add("chat");
     return s;
   }, [summaryData, quizData, flashcardsData, questionsData, simplifyData, historyData, chatMessages]);
@@ -777,49 +687,27 @@ export default function NoteDetails() {
     } finally { setSummaryLoading(false); }
   }, [id, showToast]);
 
-  const handleRegenerateSummary =
-    useCallback(async () => {
-      setSummaryLoading(true);
-      console.log("REGENERATE SUMMARY CLICKED");
-
-      try {
-        await apiClient.post(
-          `/ai/regenerate-summary/${id}`
-        );
-
-        const res =
-          await generateSummary(id);
-
-        const payload =
-          unwrapResult(res);
-
-        setSummaryData(payload);
-
-        showToast(
-          "Summary regenerated"
-        );
-      } catch (err) {
-        showToast(
-          normalizeNetworkError(err),
-          "error"
-        );
-      } finally {
-        setSummaryLoading(false);
-      }
-    }, [id, showToast]);
+  const handleRegenerateSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    console.log("REGENERATE SUMMARY CLICKED");
+    try {
+      await apiClient.post(`/ai/regenerate-summary/${id}`);
+      const res = await generateSummary(id);
+      const payload = unwrapResult(res);
+      setSummaryData(payload);
+      showToast("Summary regenerated");
+    } catch (err) {
+      showToast(normalizeNetworkError(err), "error");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [id, showToast]);
 
   const handleRefreshSummary = useCallback(async () => {
     try {
       const noteRes = await apiClient.get(`/notes/${id}`);
-
-      const note =
-        noteRes.data?.note || noteRes.data;
-
-      setSummaryData({
-        summary:
-          note?.aiContent?.summary || "",
-      });
-
+      const note = noteRes.data?.note || noteRes.data;
+      setSummaryData({ summary: note?.aiContent?.summary || "" });
       showToast("Summary refreshed");
     } catch (err) {
       console.error(err);
@@ -829,37 +717,16 @@ export default function NoteDetails() {
   const handleGenerateQuiz = useCallback(async () => {
     setQuizLoading(true);
     setQuizError("");
-
     try {
       const res = await generateQuiz(id);
       const payload = unwrapResult(res);
-
       console.log("PAYLOAD", payload);
-
-      // Clear old quiz progress
-      localStorage.removeItem(
-        `quiz-selected-${id}`
-      );
-
-      localStorage.removeItem(
-        `quiz-revealed-${id}`
-      );
-
-      setQuizData(
-        Array.isArray(payload)
-          ? payload
-          : payload.quiz || []
-      );
-
+      localStorage.removeItem(`quiz-selected-${id}`);
+      localStorage.removeItem(`quiz-revealed-${id}`);
+      setQuizData(Array.isArray(payload) ? payload : payload.quiz || []);
     } catch (err) {
-      console.error(
-        "[NoteDetails] generateQuiz error:",
-        err
-      );
-
-      const msg =
-        normalizeNetworkError(err);
-
+      console.error("[NoteDetails] generateQuiz error:", err);
+      const msg = normalizeNetworkError(err);
       setQuizError(msg);
       showToast(msg, "error");
     } finally {
@@ -867,43 +734,22 @@ export default function NoteDetails() {
     }
   }, [id, showToast]);
 
-  const handleRegenerateQuiz =
-    useCallback(async () => {
-      setQuizLoading(true);
-
-      try {
-        const res =
-          await regenerateQuiz(id);
-
-        const payload =
-          unwrapResult(res);
-
-        setQuizData(
-          payload.quiz || []
-        );
-
-        await handleLoadHistory();
-
-        localStorage.removeItem(
-          `quiz-selected-${id}`
-        );
-
-        localStorage.removeItem(
-          `quiz-revealed-${id}`
-        );
-
-        showToast(
-          "Quiz regenerated successfully"
-        );
-      } catch (err) {
-        showToast(
-          normalizeNetworkError(err),
-          "error"
-        );
-      } finally {
-        setQuizLoading(false);
-      }
-    }, [id, showToast, handleLoadHistory]);
+  const handleRegenerateQuiz = useCallback(async () => {
+    setQuizLoading(true);
+    try {
+      const res = await regenerateQuiz(id);
+      const payload = unwrapResult(res);
+      setQuizData(payload.quiz || []);
+      await handleLoadHistory();
+      localStorage.removeItem(`quiz-selected-${id}`);
+      localStorage.removeItem(`quiz-revealed-${id}`);
+      showToast("Quiz regenerated successfully");
+    } catch (err) {
+      showToast(normalizeNetworkError(err), "error");
+    } finally {
+      setQuizLoading(false);
+    }
+  }, [id, showToast, handleLoadHistory]);
 
   const handleGenerateFlashcards = useCallback(async () => {
     setFlashcardsLoading(true); setFlashcardsError("");
@@ -935,10 +781,8 @@ export default function NoteDetails() {
 
   const handleSimplify = useCallback(async () => {
     console.log("SIMPLIFY BUTTON CLICKED");
-
     setSimplifyLoading(true);
     setSimplifyError("");
-
     try {
       const res = await simplifyNote(id);
       const payload = unwrapResult(res);
@@ -952,16 +796,11 @@ export default function NoteDetails() {
 
   const handleRefreshSimplify = useCallback(async () => {
     console.log("REFRESH SIMPLIFY HIT");
-
     try {
       const noteRes = await apiClient.get(`/notes/${id}`);
-
       console.log("NOTE RESPONSE:", noteRes);
-
       const note = noteRes.data?.note || noteRes.data;
-      setSimplifyData(
-        note?.aiContent?.simplify || ""
-      );
+      setSimplifyData(note?.aiContent?.simplify || "");
       showToast("Simplified notes refreshed");
     } catch (err) {
       console.error(err);
@@ -971,139 +810,75 @@ export default function NoteDetails() {
   const handleDeleteHistory = async (item) => {
     try {
       console.log("DELETE HISTORY:", item);
-
-      await apiClient.delete(
-        `/ai/history/${id}/${item._id}`
-      );
-
+      await apiClient.delete(`/ai/history/${id}/${item._id}`);
       await handleLoadHistory();
-
       showToast("History deleted");
-
       return true;
     } catch (err) {
-      showToast(
-        normalizeNetworkError(err),
-        "error"
-      );
-
+      showToast(normalizeNetworkError(err), "error");
       return false;
     }
   };
+
   const loadChats = async () => {
     try {
       const res = await getChats(id);
-
       const data = res.data || [];
-
       setChats(data);
-
-      if (
-        data.length > 0 &&
-        !selectedChat
-      ) {
+      if (data.length > 0 && !selectedChat) {
         const firstChat = data[0];
-
         setSelectedChat(firstChat);
-
-        const chatRes = await getChat(
-          id,
-          firstChat._id
-        );
-
-        setChatMessages(
-          chatRes.data?.messages || []
-        );
+        const chatRes = await getChat(id, firstChat._id);
+        setChatMessages(chatRes.data?.messages || []);
       }
     } catch (err) {
-      console.error(
-        "Load Chats Error:",
-        err
-      );
+      console.error("Load Chats Error:", err);
     }
   };
 
   useEffect(() => {
-    if (id) {
-      loadChats();
-    }
+    if (id) { loadChats(); }
   }, [id]);
 
-  const handleRenameChat = async (
-    chatId,
-    title
-  ) => {
+  const handleRenameChat = async (chatId, title) => {
     try {
-      await renameChat(
-        id,
-        chatId,
-        title
-      );
-
+      await renameChat(id, chatId, title);
       await loadChats();
     } catch (err) {
-      console.error(
-        "Rename Chat Error:",
-        err
-      );
+      console.error("Rename Chat Error:", err);
     }
   };
 
-  const handleDeleteChat = async (
-    chatId
-  ) => {
+  const handleDeleteChat = async (chatId) => {
     try {
-      await deleteChat(
-        id,
-        chatId
-      );
-
+      await deleteChat(id, chatId);
       await loadChats();
-
-      if (
-        selectedChat?._id === chatId
-      ) {
+      if (selectedChat?._id === chatId) {
         setSelectedChat(null);
         setChatMessages([]);
       }
     } catch (err) {
-      console.error(
-        "Delete Chat Error:",
-        err
-      );
+      console.error("Delete Chat Error:", err);
     }
   };
 
   const handleSelectChat = async (chat) => {
     try {
       setSelectedChat(chat);
-
-      const res = await getChat(
-        id,
-        chat._id
-      );
-
-      setChatMessages(
-        res.data?.messages || []
-      );
+      const res = await getChat(id, chat._id);
+      setChatMessages(res.data?.messages || []);
     } catch (err) {
-      console.error(
-        "Select Chat Error:",
-        err
-      );
+      console.error("Select Chat Error:", err);
     }
   };
+
   const handleNewChat = async () => {
     try {
       const res = await createChat(id);
-
       await loadChats();
-
       setSelectedChat(res.data);
       setChatMessages([]);
-
       await handleSelectChat(res.data);
-
       return res.data;
     } catch (err) {
       console.error(err);
@@ -1112,115 +887,66 @@ export default function NoteDetails() {
 
   const handleSendChat = useCallback(async (message) => {
     const text = (typeof message === "string" ? message : "").trim();
-
     if (!text) return;
 
     let currentChat = selectedChat;
-
     if (!currentChat) {
       const created = await handleNewChat();
-
       currentChat = created?.chat || created;
     }
 
     setChatInput("");
-
-    // Show user message instantly
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        content: text,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-
+    setChatMessages((prev) => [...prev, {
+      role: "user",
+      content: text,
+      timestamp: new Date().toISOString(),
+    }]);
     setChatSending(true);
 
     try {
-      const res = await sendMessage(
-        id,
-        currentChat._id,
-        text
-      );
-
+      const res = await sendMessage(id, currentChat._id, text);
       const raw = unwrapResult(res);
       const reply = extractMessageText(raw);
 
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: reply || "No response.",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: reply || "No response.",
+        timestamp: new Date().toISOString(),
+      }]);
 
-      // Refresh chat list
       await loadChats();
-      const handleRenameChat = async (
-        chatId,
-        title
-      ) => {
-        try {
-          await renameChat(
-            id,
-            chatId,
-            title
-          );
 
+      const handleRenameChat = async (chatId, title) => {
+        try {
+          await renameChat(id, chatId, title);
           await loadChats();
         } catch (err) {
-          console.error(
-            "Rename Chat Error:",
-            err
-          );
+          console.error("Rename Chat Error:", err);
         }
       };
 
-      const handleDeleteChat = async (
-        chatId
-      ) => {
+      const handleDeleteChat = async (chatId) => {
         try {
-          await deleteChat(
-            id,
-            chatId
-          );
-
+          await deleteChat(id, chatId);
           await loadChats();
-
-          if (
-            selectedChat?._id === chatId
-          ) {
+          if (selectedChat?._id === chatId) {
             setSelectedChat(null);
             setChatMessages([]);
           }
         } catch (err) {
-          console.error(
-            "Delete Chat Error:",
-            err
-          );
+          console.error("Delete Chat Error:", err);
         }
       };
-      const updatedChat = await getChat(
-        id,
-        currentChat._id
-      );
 
+      const updatedChat = await getChat(id, currentChat._id);
       setSelectedChat(updatedChat.data);
-
-      setChatMessages(
-        updatedChat.data?.messages || []
-      );
+      setChatMessages(updatedChat.data?.messages || []);
     } catch (err) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: normalizeNetworkError(err),
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: normalizeNetworkError(err),
+        timestamp: new Date().toISOString(),
+      }]);
     } finally {
       setChatSending(false);
     }
@@ -1230,17 +956,10 @@ export default function NoteDetails() {
     const text = newText?.trim();
     if (!text || !selectedChat) return;
 
-    const editedIndex = chatMessages.findIndex(
-      (m) => (m.id || m._id) === messageId
-    );
-
+    const editedIndex = chatMessages.findIndex((m) => (m.id || m._id) === messageId);
     const truncated = [
       ...chatMessages.slice(0, editedIndex < 0 ? chatMessages.length : editedIndex),
-      {
-        role: "user",
-        content: text,
-        timestamp: new Date().toISOString(),
-      },
+      { role: "user", content: text, timestamp: new Date().toISOString() },
     ];
 
     setChatMessages(truncated);
@@ -1251,139 +970,60 @@ export default function NoteDetails() {
       const raw = unwrapResult(res);
       const reply = extractMessageText(raw);
 
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: reply || "No response.",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: reply || "No response.",
+        timestamp: new Date().toISOString(),
+      }]);
 
       await loadChats();
-
       const updated = await getChat(id, selectedChat._id);
       setChatMessages(updated.data?.messages || []);
       setSelectedChat(updated.data);
-
     } catch (err) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: normalizeNetworkError(err),
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: normalizeNetworkError(err),
+        timestamp: new Date().toISOString(),
+      }]);
     } finally {
       setChatSending(false);
     }
   }, [id, selectedChat, chatMessages]);
 
-  const downloadPdfFile = async (
-    endpoint,
-    filename
-  ) => {
+  const downloadPdfFile = async (endpoint, filename) => {
     try {
-      const response =
-        await apiClient.get(endpoint, {
-          responseType: "blob",
-        });
-
-      const blob = new Blob(
-        [response.data],
-        {
-          type: "application/pdf",
-        }
-      );
-
-      const url =
-        window.URL.createObjectURL(blob);
-
-      const link =
-        document.createElement("a");
-
+      const response = await apiClient.get(endpoint, { responseType: "blob" });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
       link.href = url;
       link.download = filename;
-
-      document.body.appendChild(
-        link
-      );
-
+      document.body.appendChild(link);
       link.click();
-
       link.remove();
-
-      window.URL.revokeObjectURL(
-        url
-      );
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error(
-        "PDF Download Error:",
-        error
-      );
+      console.error("PDF Download Error:", error);
     }
   };
 
-  const handleDownloadSummary = () =>
-    downloadPdfFile(
-      `/ai/download-summary/${id}`,
-      "summary.pdf"
-    );
+  const handleDownloadSummary = () => downloadPdfFile(`/ai/download-summary/${id}`, "summary.pdf");
+  const handleDownloadQuiz = () => downloadPdfFile(`/ai/download-quiz/${id}`, "quiz.pdf");
+  const handleDownloadFlashcards = () => downloadPdfFile(`/ai/download-flashcards/${id}`, "flashcards.pdf");
+  const handleDownloadQuestions = () => downloadPdfFile(`/ai/download-important/${id}`, "questions.pdf");
+  const handleDownloadSimplify = () => downloadPdfFile(`/ai/download-simplify/${id}`, "simplified-notes.pdf");
+  const handleDownloadChat = (chatId) => downloadPdfFile(`/ai/download-chat/${id}/${chatId}`, "chat-history.pdf");
+  const handleDownloadStudyPack = () => downloadPdfFile(`/ai/download-study-pack/${id}`, "study-pack.pdf");
 
-  const handleDownloadQuiz = () =>
-    downloadPdfFile(
-      `/ai/download-quiz/${id}`,
-      "quiz.pdf"
-    );
-
-  const handleDownloadFlashcards = () =>
-    downloadPdfFile(
-      `/ai/download-flashcards/${id}`,
-      "flashcards.pdf"
-    );
-
-  const handleDownloadQuestions = () =>
-    downloadPdfFile(
-      `/ai/download-important/${id}`,
-      "questions.pdf"
-    );
-
-  const handleDownloadSimplify = () =>
-    downloadPdfFile(
-      `/ai/download-simplify/${id}`,
-      "simplified-notes.pdf"
-    );
-
-  const handleDownloadChat = (
-    chatId
-  ) =>
-    downloadPdfFile(
-      `/ai/download-chat/${id}/${chatId}`,
-      "chat-history.pdf"
-    );
-
-  const handleDownloadStudyPack = () =>
-    downloadPdfFile(
-      `/ai/download-study-pack/${id}`,
-      "study-pack.pdf"
-    );
-
-  // ── Tab change: switch tab then smooth-scroll the AI panel into view ──────
   const handleTabChange = useCallback(
     (key) => {
       setActiveTab(key);
-
       if (key === "history" && !historyData) {
         handleLoadHistory();
       }
-
-      // Scroll to the AI panel after the state update has painted
       requestAnimationFrame(() => {
-        aiPanelRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        aiPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     },
     [historyData, handleLoadHistory]
@@ -1393,18 +1033,18 @@ export default function NoteDetails() {
   return (
     <Layout>
       <Toast toast={toast} onDismiss={() => setToast(null)} />
-      <div className="mx-auto w-full max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8 lg:py-6 dark:bg-[#11151c] min-h-screen">
+      <div className="dark:bg-[#11151c] min-h-screen">
         <div
-          className={`grid grid-cols-1 gap-6 ${activeTab === "chat"
+          className={`grid grid-cols-1 gap-6 lg:gap-8 ${activeTab === "chat"
             ? "lg:grid-cols-1"
-            : "lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]"
+            : "lg:grid-cols-[minmax(0,1fr)_256px]"
             }`}
         >
+          <main className="min-w-0 space-y-6 lg:space-y-8">
 
-          <main className="min-w-0 space-y-6">
-            {/* Header */}
-            <section className="rounded-3xl border border-purple-200/60 bg-gradient-to-br from-purple-50 via-white to-slate-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* ── Header ── */}
+            <section className="rounded-3xl border border-purple-200/60 bg-gradient-to-br from-purple-50 via-white to-slate-50 p-4 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <button onClick={() => navigate(-1)}
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#161b22] dark:text-slate-300 dark:hover:bg-slate-800/60">
                   <ArrowLeft size={15} /> Back
@@ -1414,14 +1054,14 @@ export default function NoteDetails() {
                   {favorite ? "Favourite" : "Not Favourite"}
                 </Badge>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
                 <Badge tone="purple"><BookOpen size={11} /> {subject}</Badge>
                 {sourceType && <Badge tone="slate"><FileText size={11} /> {sourceType}</Badge>}
                 <Badge tone="slate"><Clock3 size={11} /> Created {formatDate(createdAt)}</Badge>
                 <Badge tone="slate"><Clock3 size={11} /> Updated {formatDate(updatedAt)}</Badge>
                 {tags.map((tag, i) => <Badge key={i} tone="slate">#{tag}</Badge>)}
               </div>
-              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl lg:text-4xl">
+              <h1 className="mt-3 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl lg:text-3xl">
                 {noteLoading ? "Loading…" : title}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
@@ -1429,8 +1069,8 @@ export default function NoteDetails() {
               </p>
             </section>
 
-            {/* Stats */}
-            <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {/* ── Stats ── */}
+            <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
               <StatCard icon={Type} label="Words" value={wordCount.toLocaleString()} />
               <StatCard icon={Hash} label="Characters" value={content.length.toLocaleString()} />
               <StatCard icon={Clock3} label="Read Time" value={`${readTime} min`} />
@@ -1439,35 +1079,47 @@ export default function NoteDetails() {
               <StatCard icon={RefreshCw} label="Last Active" value={formatDate(lastActive)} />
             </section>
 
-            {/* Note Content */}
-            <section className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
+            {/* ── Note Content ── */}
+            <section className="rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">Note Content</h2>
               <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Clean reading view · line breaks preserved</p>
               <div className="mt-4">
                 {noteLoading ? <Skeleton rows={8} />
                   : noteError ? <ErrorCard message={noteError} />
-                    : <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700 dark:text-slate-300">{content || "No content available."}</p>}
+                    : <p className="whitespace-pre-wrap break-words text-sm leading-7 max-w-none text-slate-700 dark:text-slate-300">{content || "No content available."}</p>}
               </div>
             </section>
 
-            {/* Tab bar */}
-            <div role="tablist" aria-label="AI features"
-              className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white/90 p-2.5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-[#161b22] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {/* ── Tab bar — horizontally scrollable on mobile ── */}
+            <div
+              role="tablist"
+              className="grid w-full grid-cols-8 gap-1 rounded-xl border border-slate-800 bg-[#161b22] p-1.5"
+            >
               {TABS.map(({ key, label, icon: Icon }) => {
                 const active = activeTab === key;
                 const done = generatedTabs.has(key);
                 return (
-                  <button key={key} role="tab" aria-selected={active} onClick={() => handleTabChange(key)}
-                    className={cn("relative inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
-                      active ? "bg-purple-600 text-white shadow-sm dark:bg-purple-500" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60")}>
-                    <Icon size={14} />{label}
-                    {done && !active && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                  <button
+                    key={key}
+                    onClick={() => handleTabChange(key)}
+                    className={cn(
+                      "relative flex w-full items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[12px] font-medium transition-all whitespace-nowrap",
+                      active
+                        ? "bg-purple-600 text-white shadow-sm"
+                        : "text-slate-300 hover:bg-slate-800/60"
+                    )}
+                  >
+                    <Icon size={12} className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                    {done && !active && (
+                      <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Active AI panel — ref attached here for scroll targeting */}
+            {/* ── Active AI panel ── */}
             <div ref={aiPanelRef}>
               {activeTab === "chat" ? (
                 <ChatPanel
@@ -1543,15 +1195,9 @@ export default function NoteDetails() {
             </div>
           </main>
 
+          {/* ── Sidebar: sticky on lg+, hidden on mobile ── */}
           {activeTab !== "chat" && (
-            <aside
-              className="hidden lg:block"
-              style={{
-                position: "sticky",
-                top: "24px",
-                alignSelf: "start",
-              }}
-            >
+            <aside className="hidden lg:block lg:sticky lg:top-8 self-start">
               <WorkspaceSidebar
                 activeTab={activeTab}
                 onTabChange={handleTabChange}

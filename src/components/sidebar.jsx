@@ -41,20 +41,16 @@ function formatRole(role) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL || "")
-  .replace("/api", "");
-
-function withCacheBuster(url) {
+// Uses apiClient.defaults.baseURL — no hardcoded URLs
+function resolveAvatarUrl(url) {
   if (!url) return "";
-
-  const fullUrl = url.startsWith("http")
-    ? url
-    : `${API_BASE}${url}`;
-
-  const separator = fullUrl.includes("?") ? "&" : "?";
-
-  return `${fullUrl}${separator}t=${Date.now()}`;
+  if (url.startsWith("http") || url.startsWith("blob:")) return url;
+  const base = (apiClient.defaults?.baseURL || "")
+    .replace("/api", "")
+    .replace(/\/$/, "");
+  return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
 }
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,11 +58,16 @@ export default function Sidebar() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
+  // Bust cache by tracking a refresh timestamp
+  const [avatarTs, setAvatarTs] = useState(() => Date.now());
 
   const loadProfile = useCallback(async () => {
     try {
       const { data } = await apiClient.get("/auth/profile");
       setProfile(data?.user || data?.profile || data || null);
+      setAvatarError(false);
+      setAvatarTs(Date.now()); // force avatar img to re-fetch
     } catch {
       setProfile(null);
     }
@@ -77,14 +78,21 @@ export default function Sidebar() {
   }, [loadProfile]);
 
   useEffect(() => {
-    const handleProfileUpdate = () => {
+    const handleProfileUpdate = (e) => {
+      // Apply new avatar immediately from event detail — no API wait
+      const newAvatar = e?.detail?.avatar;
+      if (newAvatar) {
+        setProfile((prev) =>
+          prev ? { ...prev, avatarUrl: newAvatar, avatar: newAvatar } : prev
+        );
+        setAvatarError(false);
+        setAvatarTs(Date.now());
+      }
+      // Then re-fetch to stay fully in sync
       loadProfile();
     };
-
     window.addEventListener("profile-updated", handleProfileUpdate);
-    return () => {
-      window.removeEventListener("profile-updated", handleProfileUpdate);
-    };
+    return () => window.removeEventListener("profile-updated", handleProfileUpdate);
   }, [loadProfile]);
 
   const closeMobile = () => setMobileOpen(false);
@@ -111,16 +119,33 @@ export default function Sidebar() {
     profile?.image ||
     profile?.profileImage ||
     "";
-  const avatarSrc = useMemo(() => withCacheBuster(avatarRaw), [avatarRaw]);
+
+  // avatarSrc uses apiClient baseURL + cache-bust timestamp
+  const avatarSrc = useMemo(() => {
+    const resolved = resolveAvatarUrl(avatarRaw);
+    if (!resolved) return "";
+    const sep = resolved.includes("?") ? "&" : "?";
+    return `${resolved}${sep}t=${avatarTs}`;
+  }, [avatarRaw, avatarTs]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("refreshToken");
+    closeMobile();
+    navigate("/login");
+  };
 
   return (
     <>
+      {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className={`fixed top-4 left-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-lg transition lg:hidden ${darkMode
-          ? "bg-[#0f1117] border-white/10 text-white"
-          : "bg-white border-slate-200 text-slate-900"
-          }`}
+        className={`fixed top-4 left-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-lg transition lg:hidden ${
+          darkMode
+            ? "bg-[#0f1117] border-white/10 text-white"
+            : "bg-white border-slate-200 text-slate-900"
+        }`}
         aria-label="Open sidebar"
       >
         <Menu size={18} />
@@ -128,13 +153,18 @@ export default function Sidebar() {
 
       <aside
         className={`
-          fixed top-0 left-0 z-30 h-screen w-[260px] shrink-0 border-r transition-transform duration-300 ease-out
+          fixed top-0 left-0 z-30 h-screen w-[250px] shrink-0 border-r transition-transform duration-300 ease-out
           ${darkMode ? "bg-[#0f1117] border-white/5" : "bg-white border-slate-200"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <div className="flex h-full flex-col overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-white/5 p-4">
+        {/* overflow-hidden on outer: prevents the whole sidebar from scrolling */}
+        <div className="flex h-full flex-col overflow-hidden">
+
+          {/* Logo — pinned at top */}
+          <div className={`flex shrink-0 items-center justify-between border-b px-4 py-3 ${
+            darkMode ? "border-white/5" : "border-slate-200"
+          }`}>
             <Link to="/dashboard" className="flex items-center gap-3" onClick={closeMobile}>
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-600/15">
                 <span className="font-semibold text-violet-300">A</span>
@@ -151,66 +181,73 @@ export default function Sidebar() {
 
             <button
               onClick={() => setMobileOpen(false)}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition lg:hidden ${darkMode
-                ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
-                : "bg-white border-slate-200 text-slate-900 hover:bg-slate-50"
-                }`}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition lg:hidden ${
+                darkMode
+                  ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  : "bg-white border-slate-200 text-slate-900 hover:bg-slate-50"
+              }`}
               aria-label="Close sidebar"
             >
               <X size={16} />
             </button>
           </div>
 
-          <div className="space-y-4 p-4">
-            <button
-              onClick={toggleTheme}
-              className={`w-full inline-flex items-center justify-between rounded-xl px-4 py-3 border font-medium transition-all duration-200 hover:translate-y-[-1px] ${darkMode
-                ? "bg-white/5 border-white/10 hover:bg-white/10 text-white"
-                : "bg-white border-slate-200 hover:bg-slate-50 text-slate-900"
+          {/* Nav — middle, only this scrolls if it ever overflows */}
+        <div className="flex-1 overflow-hidden">
+           <div className="space-y-2 p-3">
+              <button
+                onClick={toggleTheme}
+                className={`w-full inline-flex items-center justify-between rounded-xl px-3 py-2.5border font-medium transition-all duration-200 hover:translate-y-[-1px] ${
+                  darkMode
+                    ? "bg-white/5 border-white/10 hover:bg-white/10 text-white"
+                    : "bg-white border-slate-200 hover:bg-slate-50 text-slate-900"
                 }`}
-            >
-              <span className="inline-flex items-center gap-2">
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-                {darkMode ? "Light mode" : "Dark mode"}
-              </span>
-              <ChevronRight size={16} />
-            </button>
+              >
+                <span className="inline-flex items-center gap-2">
+                  {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                  {darkMode ? "Light mode" : "Dark mode"}
+                </span>
+                <ChevronRight size={16} />
+              </button>
 
-            <nav className="space-y-1 pt-1">
-              {navItems.map(({ to, label, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={closeMobile}
-                  className={() =>
-                    `group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 ${navClass(
-                      to
-                    )}`
-                  }
-                >
-                  <Icon size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-                  <span className="font-medium">{label}</span>
-                </NavLink>
-              ))}
-            </nav>
+              <nav className="space-y-1 pt-1">
+                {navItems.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={closeMobile}
+                    className={() =>
+                      `group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${navClass(to)}`
+                    }
+                  >
+                    <Icon
+                      size={16}
+                      className="transition-transform duration-200 group-hover:translate-x-0.5"
+                    />
+                    <span className="font-medium">{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
           </div>
 
-          <div className="mt-auto p-4 space-y-4">
-            <div
-              className={`rounded-2xl border p-4 ${darkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
-                }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-600/15 shrink-0 overflow-hidden">
-                  {avatarRaw ? (
+          {/* Profile + Logout — pinned at bottom */}
+          <div className={`shrink-0 space-y-2 border-t p-3 ${
+            darkMode ? "border-white/5" : "border-slate-200"
+          }`}>
+            <div className={`rounded-2xl border p-2.5${
+              darkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
+            }`}>
+              <div className="flex items-center gap-3">
+                {/* Avatar: updates instantly via event detail + cache-bust ts */}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-600/15 overflow-hidden">
+                  {avatarSrc && !avatarError ? (
                     <img
                       key={avatarSrc}
                       src={avatarSrc}
                       alt={name}
                       className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
+                      onError={() => setAvatarError(true)}
                     />
                   ) : (
                     <span className="text-sm font-semibold text-violet-300">
@@ -220,14 +257,18 @@ export default function Sidebar() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-slate-900 dark:text-white">
+                  <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                     {name}
                   </div>
-                  <div className="truncate text-sm text-slate-500 dark:text-slate-400">
+                  <div className="truncate text-xs text-slate-500 dark:text-slate-400">
                     {email}
                   </div>
-                  <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-300">
-                    <Shield size={11} />
+                  <div className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${
+                    darkMode
+                      ? "border-white/10 bg-white/5 text-slate-300"
+                      : "border-slate-200 bg-slate-100 text-slate-600"
+                  }`}>
+                    <Shield size={10} />
                     {role}
                   </div>
                 </div>
@@ -235,23 +276,21 @@ export default function Sidebar() {
             </div>
 
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                closeMobile();
-                navigate("/login");
-              }}
-              className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 border font-medium transition ${darkMode
-                ? "bg-rose-500/10 border-rose-500/20 text-rose-300 hover:bg-rose-500/15"
-                : "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100"
-                }`}
+              onClick={handleLogout}
+              className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 border font-medium transition ${
+                darkMode
+                  ? "bg-rose-500/10 border-rose-500/20 text-rose-300 hover:bg-rose-500/15"
+                  : "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100"
+              }`}
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
               Logout
             </button>
           </div>
         </div>
       </aside>
 
+      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"

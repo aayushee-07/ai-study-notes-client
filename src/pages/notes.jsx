@@ -33,16 +33,6 @@ import {
   BookMarked,
 } from "lucide-react";
 
-// ─── Dark mode palette — matches Favorites page exactly ───────────────────
-// Page wrapper bg:   controlled by Layout
-// Hero section:      dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c]
-// Cards / panels:    dark:bg-[#161b22]   border: dark:border-slate-800
-// Inputs/selects:    dark:bg-slate-900   border: dark:border-slate-700
-// Chip inactive bg:  dark:bg-slate-900   border: dark:border-slate-700
-// Button badges:     dark:bg-slate-800   border: dark:border-slate-700
-// Pagination btns:   dark:bg-slate-800   border: dark:border-slate-700
-// ──────────────────────────────────────────────────────────────────────────
-
 function formatDate(value) {
   if (!value) return "—";
   try {
@@ -107,8 +97,8 @@ function Toast({ toast, onClose }) {
     toast.type === "success"
       ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
       : toast.type === "error"
-      ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
-      : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
+        ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+        : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
   const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
   return (
     <div className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${tone}`}>
@@ -222,7 +212,15 @@ function Notes() {
   const [favoriteBusyId, setFavoriteBusyId] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem("notes-view-mode") || "grid");
+
+  // FIX #3: Read AND write viewMode to localStorage
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem("notes-view-mode") || "grid"
+  );
+  const handleViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem("notes-view-mode", mode);
+  };
 
   const showToast = useCallback((message, type = "info") => {
     setToast({ message, type, id: Date.now() });
@@ -255,7 +253,13 @@ function Notes() {
 
   useEffect(() => { fetchNotes(page); }, [fetchNotes, page]);
 
-  const subjects = useMemo(() => Array.from(new Set(notes.map((n) => n.subject).filter(Boolean))), [notes]);
+  // FIX #6: Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [search, sortBy, subject, activeChip]);
+
+  const subjects = useMemo(
+    () => Array.from(new Set(notes.map((n) => n.subject).filter(Boolean))),
+    [notes]
+  );
 
   const filteredNotes = useMemo(() => {
     let list = [...notes];
@@ -286,14 +290,12 @@ function Notes() {
   const totalPages = Math.max(1, Math.ceil(totalCount / 12));
   const favoriteCount = useMemo(() => notes.filter(isFavorite).length, [notes]);
 
-  const stats = useMemo(() => {
-    return [
-      { label: "Total Notes", value: notes.length, icon: <LibraryBig size={18} />, subtext: "All loaded notes" },
-      { label: "Favorites", value: notes.filter(isFavorite).length, icon: <Star size={18} />, subtext: "All starred notes" },
-      { label: "PDF Notes", value: notes.filter(isPdfNote).length, icon: <FileBadge2 size={18} />, subtext: "Uploaded PDFs" },
-      { label: "Manual Notes", value: notes.filter(isManualNote).length, icon: <BookMarked size={18} />, subtext: "Handwritten notes" },
-    ];
-  }, [notes]);
+  const stats = useMemo(() => [
+    { label: "Total Notes", value: notes.length, icon: <LibraryBig size={18} />, subtext: "All loaded notes" },
+    { label: "Favorites", value: notes.filter(isFavorite).length, icon: <Star size={18} />, subtext: "All starred notes" },
+    { label: "PDF Notes", value: notes.filter(isPdfNote).length, icon: <FileBadge2 size={18} />, subtext: "Uploaded PDFs" },
+    { label: "Manual Notes", value: notes.filter(isManualNote).length, icon: <BookMarked size={18} />, subtext: "Handwritten notes" },
+  ], [notes]);
 
   const handleEdit = useCallback((id) => { if (id) navigate(`/notes/edit/${id}`); }, [navigate]);
   const handleView = useCallback((id) => { if (id) navigate(`/notes/${id}`); }, [navigate]);
@@ -312,10 +314,46 @@ function Notes() {
     } finally { setDeleteBusy(false); }
   }, [deleteTarget, fetchNotes, page, showToast]);
 
-  const previewCount = useCallback(
+  // FIX #4: Renamed from previewCount → getPreviewText (it returns text, not a count)
+  const getPreviewText = useCallback(
     (note) => formatPreview(note?.content || note?.excerpt || note?.summary || note?.preview || "", 145),
     []
   );
+
+  // FIX #5: Optimistic favorite toggle — no extra fetchNotes call
+  const handleToggleFavorite = useCallback(async (note) => {
+    const noteId = getNoteId(note);
+    if (!noteId) return;
+    setFavoriteBusyId(noteId);
+    // Optimistically flip locally
+    setNotes((prev) =>
+      prev.map((item) => {
+        if (getNoteId(item) !== noteId) return item;
+        return { ...item, favorite: !isFavorite(item), isFavorite: !isFavorite(item) };
+      })
+    );
+    try {
+      const res = await apiClient.put(`/notes/favorite/${noteId}`);
+      const updated = res?.data?.note || res?.data || null;
+      if (updated && typeof updated === "object") {
+        setNotes((prev) =>
+          prev.map((item) => (getNoteId(item) === noteId ? { ...item, ...updated } : item))
+        );
+      }
+      showToast("Favorite updated.", "success");
+    } catch (err) {
+      // Revert optimistic update on error
+      setNotes((prev) =>
+        prev.map((item) => {
+          if (getNoteId(item) !== noteId) return item;
+          return { ...item, favorite: !isFavorite(item), isFavorite: !isFavorite(item) };
+        })
+      );
+      showToast(err?.response?.data?.message || "Failed to update favorite.", "error");
+    } finally {
+      setFavoriteBusyId(null);
+    }
+  }, [showToast]);
 
   return (
     <Layout>
@@ -329,14 +367,16 @@ function Notes() {
 
       <div className="space-y-6 lg:space-y-8">
 
-        {/* ── Hero ── */}
+        {/* Hero */}
         <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-7 lg:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700 shadow-sm dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300">
                 <Sparkles size={11} /> Notes Library
               </div>
-              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">All Notes</h1>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                All Notes
+              </h1>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
                 Search, sort, filter, and manage your notes from one place.
               </p>
@@ -358,14 +398,14 @@ function Notes() {
           </div>
         </section>
 
-        {/* ── Stats ── */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* FIX #1: Stats — lg:grid-cols-4 instead of xl:grid-cols-4 */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <StatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} subtext={stat.subtext} />
           ))}
         </section>
 
-        {/* ── Filters ── */}
+        {/* Filters */}
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:gap-4">
             {/* Search */}
@@ -422,11 +462,11 @@ function Notes() {
               </label>
             </div>
 
-            {/* View toggle */}
+            {/* FIX #3: View toggle uses handleViewMode to persist to localStorage */}
             <div className="lg:col-span-1 flex items-end justify-end">
-              <div className="flex flex-wrap items-center gap-2 lg:pt-0 pt-0">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setViewMode("grid")}
+                  onClick={() => handleViewMode("grid")}
                   className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                     viewMode === "grid"
                       ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
@@ -436,7 +476,7 @@ function Notes() {
                   <Grid3X3 size={14} />
                 </button>
                 <button
-                  onClick={() => setViewMode("list")}
+                  onClick={() => handleViewMode("list")}
                   className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                     viewMode === "list"
                       ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
@@ -472,10 +512,11 @@ function Notes() {
           </div>
         </section>
 
-        {/* ── Count bar ── */}
+        {/* Count bar */}
         <section className="flex items-center justify-between gap-3">
           <div className="text-sm text-slate-600 dark:text-slate-300">
-            Showing <span className="font-semibold text-slate-900 dark:text-white">{filteredNotes.length}</span> notes
+            Showing{" "}
+            <span className="font-semibold text-slate-900 dark:text-white">{filteredNotes.length}</span> notes
             <span className="mx-2 text-slate-300 dark:text-slate-600">·</span>
             <span className="font-semibold text-slate-900 dark:text-white">{favoriteCount}</span> favorites
           </div>
@@ -485,14 +526,14 @@ function Notes() {
           </div>
         </section>
 
-        {/* ── Cards ── */}
+        {/* FIX #2: Cards — lg:grid-cols-3 instead of xl:grid-cols-3 */}
         <section>
           {loading ? (
-            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"}>
+            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
               {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : filteredNotes.length ? (
-            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"}>
+            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
               {filteredNotes.map((note) => {
                 const id = getNoteId(note);
                 const fav = isFavorite(note);
@@ -504,7 +545,8 @@ function Notes() {
                   hasFlashcards(note) ? { label: "Flashcards", icon: <BookOpen size={10} /> } : null,
                   hasSimplify(note) ? { label: "Simplify", icon: <WandSparkles size={10} /> } : null,
                 ].filter(Boolean);
-                const preview = previewCount(note);
+                // FIX #4: Using renamed getPreviewText
+                const preview = getPreviewText(note);
                 const created = getCreatedAt(note);
                 const isNew = formatRelativeDays(created);
 
@@ -583,7 +625,7 @@ function Notes() {
                       </>
                     )}
 
-                    {/* Footer row */}
+                    {/* Footer */}
                     <div className="mt-auto flex items-center justify-between gap-3 pt-5 text-xs text-slate-500 dark:text-slate-400">
                       <span className="inline-flex items-center gap-1.5">
                         <Clock3 size={12} /> {formatDate(created)}
@@ -603,28 +645,9 @@ function Notes() {
                         >
                           <Pencil size={14} />
                         </button>
+                        {/* FIX #5: Uses handleToggleFavorite — no extra fetchNotes call */}
                         <button
-                          onClick={async () => {
-                            const noteId = getNoteId(note);
-                            if (!noteId) return;
-                            setFavoriteBusyId(noteId);
-                            try {
-                              const res = await apiClient.put(`/notes/favorite/${noteId}`);
-                              const updated = res?.data?.note || res?.data || null;
-                              setNotes((prev) =>
-                                prev.map((item) => {
-                                  const itemId = getNoteId(item);
-                                  if (itemId !== noteId) return item;
-                                  if (updated && typeof updated === "object") return { ...item, ...updated };
-                                  return { ...item, favorite: !isFavorite(item), isFavorite: !isFavorite(item) };
-                                })
-                              );
-                              await fetchNotes(page, true);
-                              showToast("Favorite updated.", "success");
-                            } catch (err) {
-                              showToast(err?.response?.data?.message || "Failed to update favorite.", "error");
-                            } finally { setFavoriteBusyId(null); }
-                          }}
+                          onClick={() => handleToggleFavorite(note)}
                           disabled={favoriteBusyId === id}
                           aria-label="Toggle favorite"
                           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
@@ -652,7 +675,7 @@ function Notes() {
           )}
         </section>
 
-        {/* ── Pagination ── */}
+        {/* Pagination */}
         <section className="flex flex-col items-center justify-between gap-3 pb-6 sm:flex-row">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}

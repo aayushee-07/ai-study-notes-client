@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import Layout from "../components/Layout";
+import apiClient from "../lib/apiClient";
 import {
   Upload,
   FileText,
@@ -21,13 +21,15 @@ import {
   X,
   ArrowRight,
   WandSparkles,
-  ChevronRight,
-  Home,
   Plus,
   List,
-  LayoutGrid,
+  Grid3X3,
   MessageSquareText,
   CheckCircle2,
+  Info,
+  Home,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,55 +84,87 @@ const getAIFlags = (note) => {
   if (note?.aiContent?.summary) flags.push({ key: "summary", label: "Summary", icon: BookOpen });
   if (note?.aiContent?.quiz?.length > 0) flags.push({ key: "quiz", label: "Quiz", icon: HelpCircle });
   if (note?.aiContent?.flashcards?.length > 0) flags.push({ key: "flashcards", label: "Flashcards", icon: BookOpen });
-  if (note?.aiContent?.simplify || note?.aiContent?.simplifiedNotes) flags.push({ key: "simplify", label: "Simplify", icon: WandSparkles });
+  if (note?.aiContent?.simplify || note?.aiContent?.simplifiedNotes)
+    flags.push({ key: "simplify", label: "Simplify", icon: WandSparkles });
   if (note?.chats?.length > 0) flags.push({ key: "chat", label: "Chat", icon: MessageSquareText });
   return flags;
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Shared UI components (mirrors Notes.jsx exactly) ─────────────────────────
 
-const DeleteModal = ({ isOpen, onClose, onConfirm, fileName, loading }) => {
-  if (!isOpen) return null;
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
+  const tone =
+    toast.type === "success"
+      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+      : toast.type === "error"
+        ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+        : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
+  const Icon =
+    toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-[#232634] dark:bg-[#11131a]">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-red-100 p-3 dark:bg-red-500/10">
-              <Trash2 size={22} className="text-red-600 dark:text-red-400" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Delete Note</h3>
+    <div
+      className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${tone}`}
+    >
+      <Icon size={18} className="mt-0.5 shrink-0" />
+      <div className="flex-1 text-sm leading-5">{toast.message}</div>
+      <button onClick={onClose} className="transition-opacity hover:opacity-100" aria-label="Close toast">
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({ note, loading, onCancel, onConfirm }) {
+  if (!note) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-300">
+            <Trash2 size={20} />
           </div>
-          <button onClick={onClose} className="text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-white">
-            <X size={20} />
-          </button>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Delete note?</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              This will permanently delete{" "}
+              <span className="font-medium text-slate-900 dark:text-white">{note.title || "Untitled Note"}</span>.
+            </p>
+          </div>
         </div>
-        <p className="mb-2 text-slate-600 dark:text-slate-400">Are you sure you want to delete this note?</p>
-        <p className="mb-6 break-words text-sm text-slate-500 dark:text-slate-500">"{fileName}"</p>
-        <p className="mb-6 text-xs text-red-600 dark:text-red-400">This action cannot be undone.</p>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:border dark:border-[#232634] dark:bg-[#0d1016] dark:text-slate-300 dark:hover:bg-[#1e2030]">
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
             Cancel
           </button>
-          <button onClick={onConfirm} disabled={loading} className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">
-            {loading ? "Deleting..." : "Delete Permanently"}
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="rounded-xl border border-rose-200 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-700 transition-colors hover:bg-rose-500/15 disabled:opacity-60 dark:border-rose-500/20 dark:text-rose-200"
+          >
+            {loading ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
     </div>
   );
-};
+}
 
-/** Matches Favorites/Profile StatCard exactly */
-function StatCard({ label, value, icon, iconBg, valueColor, subtext }) {
+// Matches Notes.jsx StatCard exactly — uniform violet icon, no custom color props
+function StatCard({ label, value, icon, subtext }) {
   return (
     <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22]">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {label}
+        </span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+          {icon}
+        </span>
       </div>
-      <p className={`text-3xl font-bold ${valueColor}`}>{value}</p>
+      <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{value}</div>
       {subtext ? <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{subtext}</p> : null}
     </div>
   );
@@ -153,47 +187,11 @@ function ActivityIcon({ type }) {
   );
 }
 
-function CardActions({ note, navigate, handleFavorite, openDeleteModal, deletingId }) {
-  return (
-    <div className="mt-auto flex flex-wrap gap-2 pt-4">
-      <button
-        onClick={() => navigate(`/notes/${note._id}`)}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/15"
-      >
-        <ExternalLink size={12} /> Open Workspace
-      </button>
-      <button
-        onClick={() => handleFavorite(note._id, note.favorite)}
-        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-          note.favorite
-            ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400"
-            : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-[#232634] dark:bg-[#0d1016] dark:text-slate-300 dark:hover:bg-[#1e2030]"
-        }`}
-      >
-        <Star size={12} fill={note.favorite ? "currentColor" : "none"} />
-        {note.favorite ? "Unfavorite" : "Favorite"}
-      </button>
-      <button
-        onClick={() => openDeleteModal(note._id, note.title, note.pdfFile)}
-        disabled={deletingId === note._id}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
-      >
-        {deletingId === note._id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete
-      </button>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function UploadPDF() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!localStorage.getItem("theme")) localStorage.setItem("theme", "light");
-  }, []);
 
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -210,7 +208,15 @@ export default function UploadPDF() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem("pdfView") || "grid");
+
+  // Mirrors Notes.jsx: separate Grid/List buttons + localStorage persistence
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem("pdf-view-mode") || "grid"
+  );
+  const handleViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem("pdf-view-mode", mode);
+  };
 
   const [pdfStats, setPdfStats] = useState({
     totalPDFs: 0,
@@ -218,30 +224,29 @@ export default function UploadPDF() {
     aiFeaturesGenerated: 0,
     lastUploadDate: null,
   });
-
   const [recentActivity, setRecentActivity] = useState([]);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState(null);
-  const [pendingDeleteName, setPendingDeleteName] = useState("");
+
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((message, type = "info") => {
+    setToast({ message, type, id: Date.now() });
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2800);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, note }
+
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
-  useEffect(() => { localStorage.setItem("pdfView", viewMode); }, [viewMode]);
-
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
+  // ─── Data fetching ────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
     setRecentLoading(true);
     try {
-      const res = await apiClient.get("/notes/all", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiClient.get("/notes/all");
       const notes = res.data?.notes || res.data || [];
       const filteredNotes = notes.filter((n) => n.pdfFile);
       setRecentPDFs(filteredNotes);
@@ -249,13 +254,13 @@ export default function UploadPDF() {
       const totalPDFs = filteredNotes.length;
       const totalCharacters = filteredNotes.reduce((sum, n) => sum + (n.extractedText?.length || 0), 0);
       const aiFeaturesGenerated = filteredNotes.filter(hasAnyAIFeature).length;
-      const lastUpload = [...filteredNotes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      const lastUpload = [...filteredNotes].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      )[0];
       setPdfStats({ totalPDFs, totalCharacters, aiFeaturesGenerated, lastUploadDate: lastUpload?.createdAt });
 
       try {
-        const historyRes = await apiClient.get("/api/ai/history", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const historyRes = await apiClient.get("/api/ai/history");
         setRecentActivity((historyRes.data?.history || []).slice(0, 3));
       } catch {
         setRecentActivity([]);
@@ -265,14 +270,17 @@ export default function UploadPDF() {
     } finally {
       setRecentLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ─── Filtering / sorting ──────────────────────────────────────────────────
 
   const filteredPDFs = useMemo(() => {
     return recentPDFs
       .filter((note) => {
-        if (searchQuery && !safeText(note.title).toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (searchQuery && !safeText(note.title).toLowerCase().includes(searchQuery.toLowerCase()))
+          return false;
         if (showFavoritesOnly && !note.favorite) return false;
         return true;
       })
@@ -282,15 +290,20 @@ export default function UploadPDF() {
       });
   }, [recentPDFs, searchQuery, showFavoritesOnly, sortOrder]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, sortOrder, showFavoritesOnly, viewMode]);
+  // Reset to page 1 on filter changes
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, sortOrder, showFavoritesOnly]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPDFs.length / pageSize));
-  useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const currentPagePDFs = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredPDFs.slice(start, start + pageSize);
   }, [filteredPDFs, currentPage]);
+
+  // ─── Upload logic ─────────────────────────────────────────────────────────
 
   const validate = (f) => {
     if (!f) return "Please select a file.";
@@ -307,7 +320,7 @@ export default function UploadPDF() {
     const err = validate(f);
     if (err) { setValidationErr(err); return; }
     setFile(f);
-    triggerToast("File selected successfully!");
+    showToast("File selected successfully!", "success");
   };
 
   const onDragOver = (e) => { e.preventDefault(); setDragOver(true); };
@@ -326,7 +339,7 @@ export default function UploadPDF() {
     formData.append("pdf", file);
     try {
       const res = await apiClient.post("/api/ai/upload", formData, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (e) => {
           const pct = Math.round((e.loaded * 100) / e.total);
           setUploadProgress(pct);
@@ -337,54 +350,58 @@ export default function UploadPDF() {
       setUploadProgress(100);
       setMessage("success:PDF uploaded and processed successfully!");
       fetchData();
-      triggerToast("🎉 PDF uploaded successfully!");
+      showToast("PDF uploaded successfully!", "success");
       setTimeout(() => navigate(`/notes/${res.data.note._id}`), 2500);
     } catch (error) {
       setUploadStage(null);
       setMessage(`error:${error.response?.data?.message || "Upload failed"}`);
+      showToast(error.response?.data?.message || "Upload failed.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const openDeleteModal = (noteId, title, fileName) => {
-    setPendingDeleteId(noteId);
-    setPendingDeleteName(title || fileName || "Untitled Note");
-    setShowDeleteModal(true);
-  };
+  // ─── Note actions ─────────────────────────────────────────────────────────
 
   const handleDeleteConfirm = async () => {
-    if (!pendingDeleteId) return;
-    setDeletingId(pendingDeleteId);
+    const id = deleteTarget?.id;
+    if (!id) return;
+    setDeletingId(id);
     try {
-      await apiClient.delete(`/api/notes/${pendingDeleteId}`, { headers: { Authorization: `Bearer ${token}` } });
-      setRecentPDFs((prev) => prev.filter((n) => n._id !== pendingDeleteId));
-      triggerToast("Note deleted successfully");
+      await apiClient.delete(`/notes/${id}`);
+      showToast("Note deleted.", "success");
+      setDeleteTarget(null);
       fetchData();
-    } catch {}
-    finally {
+    } catch {
+      showToast("Failed to delete note.", "error");
+    } finally {
       setDeletingId(null);
-      setPendingDeleteId(null);
-      setPendingDeleteName("");
-      setShowDeleteModal(false);
     }
   };
 
   const handleFavorite = async (noteId, currentFavorite) => {
-    setRecentPDFs((prev) => prev.map((n) => (n._id === noteId ? { ...n, favorite: !currentFavorite } : n)));
+    // Optimistic update
+    setRecentPDFs((prev) =>
+      prev.map((n) => (n._id === noteId ? { ...n, favorite: !currentFavorite } : n))
+    );
     try {
-      await apiClient.put(`/api/notes/favorite/${noteId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await apiClient.put(`/notes/favorite/${noteId}`);
+      showToast("Favorite updated.", "success");
     } catch {
-      setRecentPDFs((prev) => prev.map((n) => (n._id === noteId ? { ...n, favorite: currentFavorite } : n)));
-      triggerToast("Failed to update favorite");
+      // Revert
+      setRecentPDFs((prev) =>
+        prev.map((n) => (n._id === noteId ? { ...n, favorite: currentFavorite } : n))
+      );
+      showToast("Failed to update favorite.", "error");
     }
   };
 
   const isSuccess = message.startsWith("success:");
   const isError = message.startsWith("error:");
   const msgText = message.replace(/^(success|error):/, "");
-  const pageButtons = Array.from({ length: totalPages }, (_, i) => i + 1);
   const recentTotal = filteredPDFs.length;
+
+  // ─── Card renderer ────────────────────────────────────────────────────────
 
   const renderCard = (note) => {
     const aiFlags = getAIFlags(note);
@@ -393,47 +410,61 @@ export default function UploadPDF() {
       return (
         <div
           key={note._id}
-          className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-500/20 sm:flex-row sm:items-center"
+          className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-500/20 sm:flex-row sm:items-start"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 dark:border-violet-500/20 dark:bg-violet-500/10">
-            <FileText size={16} className="text-violet-600 dark:text-violet-400" />
-          </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
-                PDF
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                <FileText size={10} /> PDF
               </span>
               {note.favorite && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
-                  <Star size={10} fill="currentColor" /> Favorite
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-200 bg-yellow-50 px-2.5 py-1 text-[11px] text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-500/10 dark:text-yellow-300">
+                  <Star size={10} className="fill-yellow-500 dark:fill-yellow-300" /> Favorite
                 </span>
               )}
             </div>
-            <h3 className="mt-1.5 line-clamp-1 text-sm font-semibold text-slate-900 dark:text-white">{note.title || "Untitled Note"}</h3>
+            <h3 className="mt-3 line-clamp-1 text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+              {note.title || "Untitled Note"}
+            </h3>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-1"><Calendar size={11} /> {formatDate(note.createdAt)}</span>
               {note.extractedText && <span>{note.extractedText.length.toLocaleString()} chars</span>}
             </div>
             {aiFlags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {aiFlags.map(({ key, label, icon: Icon }) => (
-                  <span key={key} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                    <Icon size={10} className="text-violet-500" /> {label}
+                  <span key={key} className="inline-flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300">
+                    <Icon size={10} /> {label}
                   </span>
                 ))}
               </div>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button onClick={() => navigate(`/notes/${note._id}`)} className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/15">
-              <ExternalLink size={12} /> Open
+            <button
+              onClick={() => navigate(`/notes/${note._id}`)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition-colors hover:border-violet-200 hover:bg-violet-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-violet-500/20 dark:hover:bg-violet-500/10"
+              aria-label="Open workspace"
+            >
+              <ExternalLink size={14} />
             </button>
-            <button onClick={() => handleFavorite(note._id, note.favorite)} className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${note.favorite ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400" : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}>
-              <Star size={12} fill={note.favorite ? "currentColor" : "none"} />
-              {note.favorite ? "Unfavorite" : "Favorite"}
+            <button
+              onClick={() => handleFavorite(note._id, note.favorite)}
+              aria-label="Toggle favorite"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+            >
+              <Star
+                size={14}
+                className={note.favorite ? "fill-yellow-500 text-yellow-500 dark:fill-yellow-300 dark:text-yellow-300" : ""}
+              />
             </button>
-            <button onClick={() => openDeleteModal(note._id, note.title, note.pdfFile)} disabled={deletingId === note._id} className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
-              {deletingId === note._id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete
+            <button
+              onClick={() => setDeleteTarget({ id: note._id, note })}
+              disabled={deletingId === note._id}
+              aria-label="Delete note"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-40 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
+            >
+              {deletingId === note._id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
             </button>
           </div>
         </div>
@@ -443,133 +474,149 @@ export default function UploadPDF() {
     return (
       <div
         key={note._id}
-        className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-500/20"
+        className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-violet-200 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-500/20"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 dark:border-violet-500/20 dark:bg-violet-500/10">
-              <FileText size={16} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="line-clamp-2 text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{note.title || "Untitled Note"}</h3>
-              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{note.pdfFile?.split("/").pop() || "PDF"}</p>
-            </div>
-          </div>
-          <span className="shrink-0 inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
-            PDF
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+            <FileText size={10} /> PDF
           </span>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <span className="inline-flex items-center gap-1"><Calendar size={11} /> {formatDate(note.createdAt)}</span>
-          {note.extractedText && <span>{note.extractedText.length.toLocaleString()} chars</span>}
           {note.favorite && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
-              <Star size={10} fill="currentColor" /> Fav
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-200 bg-yellow-50 px-2.5 py-1 text-[11px] text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-500/10 dark:text-yellow-300">
+              <Star size={10} className="fill-yellow-500 dark:fill-yellow-300" /> Favorite
             </span>
           )}
         </div>
-
+        <h3 className="mt-3 line-clamp-2 text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+          {note.title || "Untitled Note"}
+        </h3>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1"><Calendar size={11} /> {formatDate(note.createdAt)}</span>
+          {note.extractedText && <span>{note.extractedText.length.toLocaleString()} chars</span>}
+        </div>
         {aiFlags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <div className="mt-4 flex flex-wrap gap-1.5">
             {aiFlags.map(({ key, label, icon: Icon }) => (
-              <span key={key} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                <Icon size={10} className="text-violet-500" /> {label}
+              <span key={key} className="inline-flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300">
+                <Icon size={10} /> {label}
               </span>
             ))}
           </div>
         )}
 
-        <CardActions note={note} navigate={navigate} handleFavorite={handleFavorite} openDeleteModal={openDeleteModal} deletingId={deletingId} />
+        {/* Footer — mirrors Notes.jsx card footer */}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-5 text-xs text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar size={12} /> {formatDate(note.createdAt)}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(`/notes/${note._id}`)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition-colors hover:border-violet-200 hover:bg-violet-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-violet-500/20 dark:hover:bg-violet-500/10"
+              aria-label="Open workspace"
+            >
+              <ExternalLink size={14} />
+            </button>
+            <button
+              onClick={() => handleFavorite(note._id, note.favorite)}
+              aria-label="Toggle favorite"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+            >
+              <Star
+                size={14}
+                className={note.favorite ? "fill-yellow-500 text-yellow-500 dark:fill-yellow-300 dark:text-yellow-300" : ""}
+              />
+            </button>
+            <button
+              onClick={() => setDeleteTarget({ id: note._id, note })}
+              disabled={deletingId === note._id}
+              aria-label="Delete note"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-40 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
+            >
+              {deletingId === note._id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <Layout>
-      {/* Toast */}
-      {showToast && (
-        <div className="fixed right-4 top-4 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 shadow-xl dark:border-emerald-500/25 dark:bg-emerald-500/10">
-          <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
-          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{toastMessage}</p>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      <ConfirmDeleteModal
+        note={deleteTarget?.note}
+        loading={deletingId === deleteTarget?.id}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
-      <DeleteModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteConfirm} fileName={pendingDeleteName} loading={deletingId === pendingDeleteId} />
-
-      {/* ── Outer flow: matches Favorites exactly ── */}
       <div className="space-y-6 lg:space-y-8">
 
-        {/* ── Hero Header ─────────────────────────────────────────────────── */}
+        {/* Hero — mirrors Notes.jsx hero exactly */}
         <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-7 lg:p-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-2xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700 shadow-sm dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300">
-                PDF WORKSPACE
+                <Sparkles size={11} /> PDF Workspace
               </div>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                Upload PDF <span className="align-middle">📄</span>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                Upload PDF
               </h1>
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
                 Transform PDFs into summaries, quizzes, flashcards, simplified notes and AI-powered study material.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
-              <button
-                onClick={fetchData}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-500/10"
-              >
-                <RefreshCw size={14} className={recentLoading ? "animate-spin" : ""} /> Refresh
-              </button>
-              <button
-                onClick={() => navigate("/notes")}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md"
-              >
-                Browse Notes <ArrowRight size={14} />
-              </button>
-            </div>
+           <div className="flex flex-col gap-2 sm:flex-row">
+  <button
+    onClick={fetchData}
+    className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-3 text-xs font-medium text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-500/10"
+  >
+    <RefreshCw size={13} className={recentLoading ? "animate-spin" : ""} />
+    Refresh
+  </button>
+
+  <button
+    onClick={() => navigate("/notes")}
+    className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 text-xs font-medium text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md"
+  >
+    Browse Notes
+    <ArrowRight size={13} />
+  </button>
+</div>
           </div>
         </section>
 
-        {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Stats — lg:grid-cols-4 matches Notes.jsx */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total PDFs"
             value={pdfStats.totalPDFs}
             icon={<FileText size={18} />}
-            iconBg="bg-violet-500/10 text-violet-600 dark:text-violet-300"
-            valueColor="text-violet-600 dark:text-violet-300"
             subtext="All uploaded PDFs"
           />
           <StatCard
             label="AI Workspaces"
             value={pdfStats.aiFeaturesGenerated}
             icon={<Sparkles size={18} />}
-            iconBg="bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
-            valueColor="text-emerald-600 dark:text-emerald-300"
             subtext="PDFs with AI features"
           />
           <StatCard
             label="Characters Extracted"
             value={pdfStats.totalCharacters.toLocaleString()}
             icon={<TrendingUp size={18} />}
-            iconBg="bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
-            valueColor="text-indigo-600 dark:text-indigo-300"
             subtext="Text pulled from PDFs"
           />
           <StatCard
             label="Last Upload"
             value={pdfStats.lastUploadDate ? formatRelativeTime(pdfStats.lastUploadDate) : "—"}
             icon={<Calendar size={18} />}
-            iconBg="bg-amber-500/10 text-amber-600 dark:text-amber-300"
-            valueColor="text-amber-600 dark:text-amber-300"
             subtext={pdfStats.lastUploadDate ? formatDate(pdfStats.lastUploadDate) : "No uploads yet"}
           />
         </section>
 
-        {/* ── Upload Box ──────────────────────────────────────────────────── */}
+        {/* Upload panel */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6 lg:p-8">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -581,7 +628,6 @@ export default function UploadPDF() {
             </span>
           </div>
 
-          {/* Drop zone */}
           <div
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -593,7 +639,13 @@ export default function UploadPDF() {
                 : "border-violet-200 bg-slate-50 hover:border-violet-300 hover:bg-slate-100 dark:border-violet-500/30 dark:bg-slate-900/40 dark:hover:bg-violet-500/5"
             }`}
           >
-            <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => pickFile(e.target.files[0])} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => pickFile(e.target.files[0])}
+            />
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-100 shadow-sm dark:bg-violet-500/10">
               <Upload size={28} className="text-violet-600 dark:text-violet-400" />
             </div>
@@ -606,7 +658,10 @@ export default function UploadPDF() {
               <>
                 <h3 className="text-base font-semibold text-slate-900 dark:text-white">Drop your PDF here</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">or click to browse files</p>
-                <button type="button" className="mt-4 inline-flex items-center gap-2 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700">
+                <button
+                  type="button"
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600"
+                >
                   Browse PDF
                 </button>
               </>
@@ -618,14 +673,12 @@ export default function UploadPDF() {
             </div>
           </div>
 
-          {/* Validation error */}
           {validationErr && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:text-rose-300">
               <AlertCircle size={15} /> {validationErr}
             </div>
           )}
 
-          {/* Selected file preview */}
           {file && !validationErr && (
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
               <FileText size={22} className="shrink-0 text-violet-600 dark:text-violet-400" />
@@ -635,66 +688,70 @@ export default function UploadPDF() {
               </div>
               <button
                 onClick={() => { setFile(null); setMessage(""); setUploadStage(null); }}
-                className="text-slate-400 transition-colors hover:text-red-500 dark:hover:text-red-400"
+                className="text-slate-400 transition-colors hover:text-rose-500 dark:hover:text-rose-400"
               >
                 <Trash2 size={15} />
               </button>
             </div>
           )}
 
-          {/* Progress bar */}
           {uploadStage && (
             <div className="mt-4">
               <div className="mb-1.5 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                <span>{uploadStage === "uploading" ? "Uploading…" : uploadStage === "processing" ? "Processing…" : "Complete!"}</span>
+                <span>
+                  {uploadStage === "uploading" ? "Uploading…" : uploadStage === "processing" ? "Processing…" : "Complete!"}
+                </span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <div className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
               </div>
             </div>
           )}
 
-          {/* Upload button */}
           <button
             onClick={handleUpload}
             disabled={loading || !file || !!validationErr}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Uploading…</> : <><Upload size={16} /> Upload PDF</>}
           </button>
 
-          {/* Upload result */}
           {message && (
-            <div className={`mt-4 flex items-center gap-2 text-sm ${isSuccess ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+            <div className={`mt-4 flex items-center gap-2 text-sm ${isSuccess ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
               {isSuccess ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
               {msgText}
             </div>
           )}
         </section>
 
-        {/* ── Quick Actions ────────────────────────────────────────────────── */}
+        {/* Quick Actions */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Quick Actions</h2>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Navigate to key areas</p>
             </div>
-            <ArrowRight size={16} className="text-slate-400 dark:text-slate-500" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+              <ArrowRight size={16} />
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Create Note", sub: "Start from scratch", icon: Plus, onClick: () => navigate("/notes/create"), color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300" },
-              { label: "Browse Notes", sub: "Open your library", icon: ChevronRight, onClick: () => navigate("/notes"), color: "bg-violet-500/10 text-violet-600 dark:text-violet-300" },
-              { label: "Favorites", sub: "Access starred notes", icon: Star, onClick: () => navigate("/favorites"), color: "bg-amber-500/10 text-amber-600 dark:text-amber-300" },
-              { label: "Dashboard", sub: "Go to overview", icon: Home, onClick: () => navigate("/dashboard"), color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300" },
-            ].map(({ label, sub, icon: Icon, onClick, color }) => (
+              { label: "Create Note", sub: "Start from scratch", icon: Plus, onClick: () => navigate("/notes/create"), },
+              { label: "Browse Notes", sub: "Open your library", icon: ChevronRight, onClick: () => navigate("/notes"), },
+              { label: "Favorites", sub: "Access starred notes", icon: Star, onClick: () => navigate("/favorites"), },
+              { label: "Dashboard", sub: "Go to overview", icon: Home, onClick: () => navigate("/dashboard"), },
+            ].map(({ label, sub, icon: Icon, onClick }) => (
               <button
                 key={label}
                 onClick={onClick}
                 className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-violet-500/20"
               >
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
                   <Icon size={16} />
                 </span>
                 <span className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">{label}</span>
@@ -704,7 +761,7 @@ export default function UploadPDF() {
           </div>
         </section>
 
-        {/* ── Recent Activity (conditional) ───────────────────────────────── */}
+        {/* Recent Activity */}
         {recentActivity.length > 0 && (
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -721,7 +778,10 @@ export default function UploadPDF() {
             </div>
             <div className="space-y-2.5">
               {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-900/60">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-900/60"
+                >
                   <ActivityIcon type={item.type} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{item.title || "Untitled"}</p>
@@ -736,138 +796,182 @@ export default function UploadPDF() {
           </section>
         )}
 
-        {/* ── Recent PDFs ──────────────────────────────────────────────────── */}
+        {/* Recent PDFs — filters panel matches Notes.jsx */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6">
-          {/* Section header */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Recent PDFs</h2>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {recentTotal} {recentTotal === 1 ? "file" : "files"} total
               </p>
             </div>
-            {/* Controls */}
-            <div className="flex flex-wrap items-center gap-2">
+          </div>
+
+          {/* Filters — rounded-3xl panel style matching Notes.jsx */}
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:gap-4">
               {/* Search */}
-              <div className="relative">
-                <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-36 rounded-xl border border-slate-200 bg-slate-50 py-2 pl-8 pr-7 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 sm:w-44"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <X size={11} />
-                  </button>
-                )}
+              <div className="lg:col-span-5">
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Search</span>
+                  <div className="relative mt-2">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search PDFs..."
+                      className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition-colors focus:border-violet-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </label>
               </div>
+
               {/* Sort */}
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-              </select>
-              {/* Favorites toggle */}
+              <div className="lg:col-span-4">
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Sort By</span>
+                  <div className="relative mt-2">
+                    <select
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value)}
+                      className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none transition-colors focus:border-violet-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+
+              {/* View toggle — separate Grid/List buttons matching Notes.jsx */}
+              <div className="lg:col-span-3 flex items-end justify-end">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleViewMode("grid")}
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                      viewMode === "grid"
+                        ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <Grid3X3 size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleViewMode("list")}
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                      viewMode === "list"
+                        ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <List size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter chips — Favorites toggle as chip */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
-                  showFavoritesOnly
-                    ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+                onClick={() => setShowFavoritesOnly(false)}
+                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                  !showFavoritesOnly
+                    ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <Star size={13} fill={showFavoritesOnly ? "currentColor" : "none"} /> Favorites
+                All PDFs
               </button>
-              {/* View toggle */}
               <button
-                onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                onClick={() => setShowFavoritesOnly(true)}
+                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                  showFavoritesOnly
+                    ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                }`}
               >
-                {viewMode === "grid" ? <List size={14} /> : <LayoutGrid size={14} />}
-                {viewMode === "grid" ? "List" : "Grid"}
+                Favorites
               </button>
             </div>
           </div>
 
-          {/* Active filter pill */}
-          {showFavoritesOnly && (
-            <div className="mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
-                <Star size={10} fill="currentColor" /> Favorites only
-                <button onClick={() => setShowFavoritesOnly(false)} className="ml-1 hover:opacity-70"><X size={10} /></button>
-              </span>
+          {/* Count bar */}
+          <div className="mb-4 flex items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
+            <div>
+              Showing{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">{currentPagePDFs.length}</span> of{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">{recentTotal}</span> PDFs
             </div>
-          )}
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Page <span className="text-slate-700 dark:text-slate-300">{currentPage}</span> of{" "}
+              <span className="text-slate-700 dark:text-slate-300">{totalPages}</span>
+            </div>
+          </div>
 
-          {/* Cards */}
+          {/* Grid / List */}
           {recentLoading ? (
-            <div className={`grid grid-cols-1 gap-4 ${viewMode === "grid" ? "md:grid-cols-2 xl:grid-cols-3" : ""}`}>
+            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-52 animate-pulse rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" />
               ))}
             </div>
           ) : currentPagePDFs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900/40">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center dark:border-slate-800 dark:bg-[#161b22]">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
                 <FileText size={24} />
               </div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                 {showFavoritesOnly ? "No favorite PDFs yet" : "No PDFs uploaded yet"}
-              </p>
-              <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 dark:text-slate-400">
-                {showFavoritesOnly ? "Star a PDF from your library to see it here." : "Upload your first PDF above to get started."}
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
+                {showFavoritesOnly
+                  ? "Star a PDF from your library to see it here."
+                  : "Upload your first PDF above to get started."}
               </p>
               {showFavoritesOnly && (
-                <button onClick={() => setShowFavoritesOnly(false)} className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <button
+                  onClick={() => setShowFavoritesOnly(false)}
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-5 py-3 text-sm font-semibold text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300"
+                >
                   Show all PDFs
                 </button>
               )}
             </div>
           ) : (
-            <div className={`grid grid-cols-1 gap-4 ${viewMode === "grid" ? "md:grid-cols-2 xl:grid-cols-3" : ""}`}>
+            <div className={viewMode === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
               {currentPagePDFs.map((note) => renderCard(note))}
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Pagination — mirrors Notes.jsx pagination */}
           {!recentLoading && currentPagePDFs.length > 0 && (
-            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Page {currentPage} of {totalPages}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Previous
-                </button>
-                {pageButtons.map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`h-8 min-w-[2rem] rounded-xl border px-2.5 text-xs font-medium transition-colors ${
-                      page === currentPage
-                        ? "border-violet-200 bg-violet-600 text-white dark:border-violet-500/20"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage >= totalPages}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Next
-                </button>
+            <div className="mt-6 flex flex-col items-center justify-between gap-3 pb-2 sm:flex-row">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <div className="text-sm text-slate-600 dark:text-slate-300">
+                Page <span className="font-semibold text-slate-900 dark:text-white">{currentPage}</span> of{" "}
+                <span className="font-semibold text-slate-900 dark:text-white">{totalPages}</span>
               </div>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
+              >
+                Next <ChevronRight size={16} />
+              </button>
             </div>
           )}
         </section>

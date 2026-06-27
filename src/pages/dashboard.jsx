@@ -17,15 +17,12 @@ import {
   AlertTriangle,
   Info,
   X,
-  Brain,
   BookOpen,
   WandSparkles,
   MessageSquare,
   ChevronRight,
-  FileSearch,
   Bookmark,
   PenSquare,
-  Loader2,
 } from "lucide-react";
 
 function formatDate(value) {
@@ -148,7 +145,11 @@ function getActivityMeta(type = "") {
 }
 
 function SkeletonCard({ className = "" }) {
-  return <div className={`animate-pulse rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#161b22] ${className}`} />;
+  return (
+    <div
+      className={`animate-pulse rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#161b22] ${className}`}
+    />
+  );
 }
 
 function Toast({ toast, onClose }) {
@@ -161,10 +162,17 @@ function Toast({ toast, onClose }) {
         ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
         : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
 
-  const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertTriangle : Info;
+  const Icon =
+    toast.type === "success"
+      ? CheckCircle2
+      : toast.type === "error"
+        ? AlertTriangle
+        : Info;
 
   return (
-    <div className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${styles}`}>
+    <div
+      className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${styles}`}
+    >
       <Icon size={18} className="mt-0.5 shrink-0" />
       <div className="flex-1 text-sm leading-5">{toast.message}</div>
       <button onClick={onClose} className="transition-opacity hover:opacity-100" aria-label="Close toast">
@@ -178,8 +186,12 @@ function SectionHeader({ title, subtitle, actionLabel, onAction, actionIcon: Act
   return (
     <div className="mb-4 flex items-end justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p> : null}
+        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+        ) : null}
       </div>
       {onAction ? (
         <button
@@ -198,11 +210,17 @@ function StatCard({ label, value, icon, valueColor, iconBg, muted }) {
   return (
     <div className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22]">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-        <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconBg}`}>{icon}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {label}
+        </span>
+        <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconBg}`}>
+          {icon}
+        </span>
       </div>
       <p className={`text-3xl font-bold tracking-tight ${valueColor}`}>{value}</p>
-      {muted ? <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{muted}</p> : null}
+      {muted ? (
+        <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{muted}</p>
+      ) : null}
     </div>
   );
 }
@@ -213,12 +231,17 @@ function ActionCard({ icon, iconBg, title, subtitle, onClick }) {
       onClick={onClick}
       className="group flex h-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-700/60"
     >
-      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBg}`}>{icon}</span>
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBg}`}>
+        {icon}
+      </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
         <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{subtitle}</p>
       </div>
-      <ArrowRight size={16} className="text-slate-400 transition-colors group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-300" />
+      <ArrowRight
+        size={16}
+        className="text-slate-400 transition-colors group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-300"
+      />
     </button>
   );
 }
@@ -234,11 +257,15 @@ function NoteCard({ note, onView, ctaLabel = "Continue" }) {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
             <Sparkles size={10} /> {getSubject(note)}
           </span>
-          <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-6 text-slate-900 dark:text-white">{getNoteTitle(note)}</h3>
+          <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-6 text-slate-900 dark:text-white">
+            {getNoteTitle(note)}
+          </h3>
         </div>
       </div>
 
-      <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{getPreview(note)}</p>
+      <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+        {getPreview(note)}
+      </p>
 
       {tags.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -275,9 +302,13 @@ function FavoriteCard({ note, onOpen }) {
         <Star size={18} className="fill-current" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{getNoteTitle(note)}</p>
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+          {getNoteTitle(note)}
+        </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{getSubject(note)}</p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDate(getUpdatedAt(note))}</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {formatDate(getUpdatedAt(note))}
+        </p>
       </div>
       <button
         onClick={onOpen}
@@ -296,8 +327,12 @@ function ChatCard({ chat, onOpen }) {
         <MessageSquare size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{safeText(chat?.title || "Untitled chat")}</p>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{safeText(chat?.preview || "No preview available.")}</p>
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+          {safeText(chat?.title || "Untitled chat")}
+        </p>
+        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {safeText(chat?.preview || "No preview available.")}
+        </p>
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{formatTime(chat?.updatedAt)}</p>
       </div>
       <button
@@ -321,7 +356,9 @@ function CompactActivityCard({ item }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-slate-900 dark:text-white">{meta.label}</p>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{safeText(item?.content)}</p>
+        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {safeText(item?.content)}
+        </p>
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{formatTime(item?.createdAt)}</p>
       </div>
     </div>
@@ -373,7 +410,8 @@ export default function Dashboard() {
         apiClient.get("/ai/recent-chats"),
       ]);
 
-      const profileData = profileRes?.data?.user || profileRes?.data?.profile || profileRes?.data || null;
+      const profileData =
+        profileRes?.data?.user || profileRes?.data?.profile || profileRes?.data || null;
       const dashData = dashRes?.data || {};
       const recentData = recentRes?.data;
       const allData = allRes?.data;
@@ -381,37 +419,39 @@ export default function Dashboard() {
       const aiData = aiRes?.data || {};
       const chatsData = chatsRes?.data;
 
-      const recentList = Array.isArray(recentData) ? recentData : recentData?.notes || recentData?.items || [];
-      const allList = Array.isArray(allData) ? allData : allData?.notes || allData?.items || [];
-      const favList = Array.isArray(favData) ? favData : favData?.notes || favData?.favorites || favData?.items || [];
-      const chatsList = Array.isArray(chatsData) ? chatsData : chatsData?.chats || chatsData?.items || [];
+      const recentList = Array.isArray(recentData)
+        ? recentData
+        : recentData?.notes || recentData?.items || [];
+      const allList = Array.isArray(allData)
+        ? allData
+        : allData?.notes || allData?.items || [];
+      const favList = Array.isArray(favData)
+        ? favData
+        : favData?.notes || favData?.favorites || favData?.items || [];
+      const chatsList = Array.isArray(chatsData)
+        ? chatsData
+        : chatsData?.chats || chatsData?.items || [];
       const activities = Array.isArray(aiData.activities) ? aiData.activities : [];
-
-      const counts = activities.reduce(
-        (acc, item) => {
-          const key = getActivityKey(item?.type);
-          acc[key] += 1;
-          return acc;
-        },
-        { summary: 0, quiz: 0, flashcards: 0, simplify: 0, chat: 0 }
-      );
 
       setProfile(profileData);
       setDashboard({
         totalNotes: Number(dashData.totalNotes ?? allList.length ?? 0),
         favoriteNotes: Number(dashData.favoriteNotes ?? dashData.favorites ?? favList.length ?? 0),
         pdfUploads: Number(dashData.pdfUploads ?? 0),
-        summaries: Number(dashData.summaries ?? counts.summary ?? 0),
-        quizzes: Number(dashData.quizzes ?? counts.quiz ?? 0),
-        flashcards: Number(dashData.flashcards ?? counts.flashcards ?? 0),
-        simplify: Number(counts.simplify ?? 0),
+        summaries: Number(dashData.summaries ?? 0),
+        quizzes: Number(dashData.quizzes ?? 0),
+        flashcards: Number(dashData.flashcards ?? 0),
+        simplify: Number(dashData.simplify ?? 0),
       });
       setRecentNotes(recentList);
       setFavoriteNotes(favList);
       setAiActivity(activities);
       setRecentChats(chatsList);
     } catch (err) {
-      showToast(err?.response?.data?.message || err?.message || "Failed to load dashboard.", "error");
+      showToast(
+        err?.response?.data?.message || err?.message || "Failed to load dashboard.",
+        "error"
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -427,8 +467,14 @@ export default function Dashboard() {
     await loadDashboard();
   }, [loadDashboard]);
 
-  const displayName = "Aayushee Raj";
+  // FIX #4: Dynamic display name from profile
+  const displayName =
+    profile?.name ||
+    profile?.username ||
+    profile?.email?.split("@")[0] ||
+    "there";
 
+  // FIX #3: Single useMemo for activity counts (removed duplicate from loadDashboard)
   const activityCounts = useMemo(() => {
     return aiActivity.reduce(
       (acc, item) => {
@@ -441,43 +487,78 @@ export default function Dashboard() {
   }, [aiActivity]);
 
   const stats = [
-    { label: "Total Notes", value: dashboard.totalNotes, icon: <FileText size={18} />, valueColor: "text-violet-700 dark:text-violet-300", iconBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
-    { label: "Favorites", value: dashboard.favoriteNotes, icon: <Star size={18} />, valueColor: "text-fuchsia-700 dark:text-fuchsia-300", iconBg: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300" },
-    { label: "PDF Uploads", value: dashboard.pdfUploads, icon: <Upload size={18} />, valueColor: "text-purple-700 dark:text-purple-300", iconBg: "bg-purple-500/10 text-purple-700 dark:text-purple-300" },
-    { label: "Summaries", value: dashboard.summaries, icon: <Sparkles size={18} />, valueColor: "text-indigo-700 dark:text-indigo-300", iconBg: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300" },
-    { label: "Quizzes", value: dashboard.quizzes, icon: <HelpCircle size={18} />, valueColor: "text-pink-700 dark:text-pink-300", iconBg: "bg-pink-500/10 text-pink-700 dark:text-pink-300" },
-    { label: "Flashcards", value: dashboard.flashcards, icon: <BookOpen size={18} />, valueColor: "text-violet-700 dark:text-violet-300", iconBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
-    { label: "Simplify", value: dashboard.simplify, icon: <WandSparkles size={18} />, valueColor: "text-purple-700 dark:text-purple-300", iconBg: "bg-purple-500/10 text-purple-700 dark:text-purple-300" },
-    { label: "Chats", value: activityCounts.chat, icon: <MessageSquare size={18} />, valueColor: "text-sky-700 dark:text-sky-300", iconBg: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+    {
+      label: "Total Notes",
+      value: dashboard.totalNotes,
+      icon: <FileText size={18} />,
+      valueColor: "text-violet-700 dark:text-violet-300",
+      iconBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    },
+    {
+      label: "Favorites",
+      value: dashboard.favoriteNotes,
+      icon: <Star size={18} />,
+      valueColor: "text-fuchsia-700 dark:text-fuchsia-300",
+      iconBg: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    },
+    {
+      label: "PDF Uploads",
+      value: dashboard.pdfUploads,
+      icon: <Upload size={18} />,
+      valueColor: "text-purple-700 dark:text-purple-300",
+      iconBg: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
+    },
+    {
+      label: "Summaries",
+      value: dashboard.summaries,
+      icon: <Sparkles size={18} />,
+      valueColor: "text-indigo-700 dark:text-indigo-300",
+      iconBg: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+    },
+    {
+      label: "Quizzes",
+      value: dashboard.quizzes,
+      icon: <HelpCircle size={18} />,
+      valueColor: "text-pink-700 dark:text-pink-300",
+      iconBg: "bg-pink-500/10 text-pink-700 dark:text-pink-300",
+    },
+    {
+      label: "Flashcards",
+      value: dashboard.flashcards,
+      icon: <BookOpen size={18} />,
+      valueColor: "text-violet-700 dark:text-violet-300",
+      iconBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    },
+    {
+      label: "Simplify",
+      value: dashboard.simplify,
+      icon: <WandSparkles size={18} />,
+      valueColor: "text-purple-700 dark:text-purple-300",
+      iconBg: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
+    },
+    {
+      label: "Chats",
+      value: activityCounts.chat,
+      icon: <MessageSquare size={18} />,
+      valueColor: "text-sky-700 dark:text-sky-300",
+      iconBg: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    },
   ];
 
   const recentNotesToShow = recentNotes.slice(0, 6);
-
-  const recentNotesGridClass =
-    recentNotesToShow.length === 1
-      ? "grid grid-cols-1 place-items-center gap-4"
-      : recentNotesToShow.length === 2
-        ? "grid grid-cols-1 gap-4 sm:grid-cols-2 place-items-stretch"
-        : recentNotesToShow.length === 3
-          ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
-          : recentNotesToShow.length === 4
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2"
-            : recentNotesToShow.length === 5
-              ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
-              : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
   return (
     <Layout>
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="space-y-6 pb-8 lg:space-y-7">
+        {/* Hero / Welcome */}
         <section className="rounded-[2rem] border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 px-5 py-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:px-6 sm:py-5 lg:px-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:border-violet-900/50 dark:text-violet-300">
                 OVERVIEW
               </div>
-
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[2rem]">
                 Welcome back, {displayName} 👋
               </h1>
@@ -494,7 +575,6 @@ export default function Dashboard() {
                 <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                 Refresh
               </button>
-
               <button
                 onClick={() => navigate("/notes/create")}
                 className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md"
@@ -505,29 +585,33 @@ export default function Dashboard() {
             </div>
           </div>
         </section>
+
+        {/* FIX #1: Stats — lg:grid-cols-4 instead of xl:grid-cols-4 */}
         <section>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {loading ? (
-              [...Array(8)].map((_, i) => <SkeletonCard key={i} className="h-full min-h-32" />)
-            ) : (
-              stats.map((stat) => (
-                <StatCard
-                  key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                  icon={stat.icon}
-                  valueColor={stat.valueColor}
-                  iconBg={stat.iconBg}
-                  muted="Premium overview of your workspace."
-                />
-              ))
-            )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {loading
+              ? [...Array(8)].map((_, i) => <SkeletonCard key={i} className="h-full min-h-32" />)
+              : stats.map((stat) => (
+                  <StatCard
+                    key={stat.label}
+                    label={stat.label}
+                    value={stat.value}
+                    icon={stat.icon}
+                    valueColor={stat.valueColor}
+                    iconBg={stat.iconBg}
+                    muted="Premium overview of your workspace."
+                  />
+                ))}
           </div>
         </section>
 
+        {/* FIX #1: Quick Actions — lg:grid-cols-4 instead of xl:grid-cols-4 */}
         <section>
-          <SectionHeader title="Quick Actions" subtitle="Common shortcuts to keep your workflow moving." />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SectionHeader
+            title="Quick Actions"
+            subtitle="Common shortcuts to keep your workflow moving."
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ActionCard
               icon={<PenSquare size={18} />}
               iconBg="bg-violet-500/10 text-violet-700 dark:text-violet-300"
@@ -558,19 +642,28 @@ export default function Dashboard() {
             />
           </div>
         </section>
+
+        {/* FIX #2: Recent Notes — simplified grid class */}
         <section>
-          <SectionHeader title="Continue Study" subtitle="Your latest notes, ready to resume." />
+          <SectionHeader
+            title="Continue Study"
+            subtitle="Your latest notes, ready to resume."
+          />
           {loading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <SkeletonCard key={i} className="h-56" />
               ))}
             </div>
           ) : recentNotesToShow.length ? (
-            <div className={recentNotesGridClass}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recentNotesToShow.map((note) => (
-                <div key={getNoteId(note) || getNoteTitle(note)} className="w-full max-w-none">
-                  <NoteCard note={note} onView={(id) => navigate(`/notes/${id}`)} ctaLabel="Continue" />
+                <div key={getNoteId(note) || getNoteTitle(note)} className="w-full">
+                  <NoteCard
+                    note={note}
+                    onView={(id) => navigate(`/notes/${id}`)}
+                    ctaLabel="Continue"
+                  />
                 </div>
               ))}
             </div>
@@ -581,8 +674,10 @@ export default function Dashboard() {
           )}
         </section>
 
+        {/* Favorites / Chats / AI Activity */}
         <section>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+            {/* Favorite Notes */}
             <div className="flex h-full flex-col">
               <SectionHeader
                 title="Favorite Notes"
@@ -593,12 +688,14 @@ export default function Dashboard() {
               />
               <div className="flex h-full flex-col gap-4">
                 {loading ? (
-                  [...Array(3)].map((_, i) => (
-                    <SkeletonCard key={i} className="h-28" />
-                  ))
+                  [...Array(3)].map((_, i) => <SkeletonCard key={i} className="h-28" />)
                 ) : favoriteNotes.length ? (
                   favoriteNotes.slice(0, 3).map((note) => (
-                    <FavoriteCard key={getNoteId(note) || getNoteTitle(note)} note={note} onOpen={() => navigate(`/notes/${getNoteId(note)}`)} />
+                    <FavoriteCard
+                      key={getNoteId(note) || getNoteTitle(note)}
+                      note={note}
+                      onOpen={() => navigate(`/notes/${getNoteId(note)}`)}
+                    />
                   ))
                 ) : (
                   <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-[#161b22] dark:text-slate-400">
@@ -608,16 +705,19 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Recent Chats */}
             <div className="flex h-full flex-col">
               <SectionHeader title="Recent Chats" subtitle="Latest 3 chats." />
               <div className="flex h-full flex-col gap-4">
                 {loading ? (
-                  [...Array(3)].map((_, i) => (
-                    <SkeletonCard key={i} className="h-28" />
-                  ))
+                  [...Array(3)].map((_, i) => <SkeletonCard key={i} className="h-28" />)
                 ) : recentChats.length ? (
                   recentChats.slice(0, 3).map((chat, idx) => (
-                    <ChatCard key={chat?.chatId || chat?.noteId || idx} chat={chat} onOpen={() => navigate(`/notes/${chat?.noteId || ""}`)} />
+                    <ChatCard
+                      key={chat?.chatId || chat?.noteId || idx}
+                      chat={chat}
+                      onOpen={() => navigate(`/notes/${chat?.noteId || ""}`)}
+                    />
                   ))
                 ) : (
                   <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-[#161b22] dark:text-slate-400">
@@ -627,24 +727,19 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* FIX #5: Recent AI Usage — clean item pass, no dead props */}
             <div className="flex h-full flex-col">
               <SectionHeader title="Recent AI Usage" subtitle="Latest 3 activities." />
               <div className="flex h-full flex-col gap-4">
                 {loading ? (
-                  [...Array(3)].map((_, i) => (
-                    <SkeletonCard key={i} className="h-28" />
-                  ))
+                  [...Array(3)].map((_, i) => <SkeletonCard key={i} className="h-28" />)
                 ) : aiActivity.length ? (
-                  aiActivity.slice(0, 3).map((item, idx) => {
-                    const meta = getActivityMeta(item?.type);
-                    const Icon = meta.icon;
-                    return (
-                      <CompactActivityCard
-                        key={item?.id || item?._id || idx}
-                        item={{ ...item, _metaLabel: meta.label, _metaIcon: Icon }}
-                      />
-                    );
-                  })
+                  aiActivity.slice(0, 3).map((item, idx) => (
+                    <CompactActivityCard
+                      key={item?.id || item?._id || idx}
+                      item={item}
+                    />
+                  ))
                 ) : (
                   <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-[#161b22] dark:text-slate-400">
                     No AI usage yet.

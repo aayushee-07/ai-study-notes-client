@@ -43,10 +43,10 @@ function Toast({ toast, onClose }) {
     : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
   const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
   return (
-    <div className={`fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:w-auto ${tone}`}>
+    <div className={`fixed right-3 top-3 left-3 z-50 flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur sm:left-auto sm:right-4 sm:top-4 sm:w-[calc(100vw-2rem)] sm:max-w-sm ${tone}`}>
       <Icon size={18} className="mt-0.5 shrink-0" />
       <div className="flex-1 text-sm leading-5">{toast.message}</div>
-      <button onClick={onClose} className="transition-opacity hover:opacity-100" aria-label="Close toast">
+      <button onClick={onClose} className="shrink-0 transition-opacity hover:opacity-100" aria-label="Close toast">
         <X size={16} />
       </button>
     </div>
@@ -178,8 +178,8 @@ export default function EditNote() {
       <div className="space-y-6 pb-8 lg:space-y-8">
 
         {/* ── Hero ── */}
-        <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 
             {/* Left */}
             <div className="min-w-0">
@@ -194,30 +194,30 @@ export default function EditNote() {
                 <PenSquare size={11} /> Edit Note
               </div>
 
-              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              <h1 className="mt-3 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl lg:text-3xl">
                 Update your note
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
                 Edit the title, subject, content, and tags, then save your changes back to the library.
               </p>
             </div>
 
-            {/* Right — stat cards */}
-            <div className="grid grid-cols-2 gap-3 md:min-w-[300px]">
-              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22]">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Note ID</p>
-                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-                    <Hash size={13} />
+            {/* Right — stat cards: side-by-side on all sizes */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:min-w-[280px] lg:max-w-[320px]">
+              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22] sm:p-4">
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">Note ID</p>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 sm:h-7 sm:w-7 sm:rounded-xl">
+                    <Hash size={12} />
                   </span>
                 </div>
                 <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{id ? `…${id.slice(-6)}` : "—"}</p>
               </div>
-              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22]">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Updated</p>
-                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
-                    <CalendarDays size={13} />
+              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-[#161b22] sm:p-4">
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">Updated</p>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-300 sm:h-7 sm:w-7 sm:rounded-xl">
+                    <CalendarDays size={12} />
                   </span>
                 </div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{updatedLabel}</p>
@@ -231,9 +231,9 @@ export default function EditNote() {
         {loading ? <EditSkeleton /> : (
           <form
             onSubmit={handleSave}
-            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6 lg:p-8"
+            className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-6 lg:p-8"
           >
-            <div className="grid gap-6">
+            <div className="grid gap-5 sm:gap-6">
 
               {/* Section label */}
               <div className="flex items-center gap-3">
@@ -244,7 +244,7 @@ export default function EditNote() {
               </div>
 
               {/* Title + Subject row */}
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 sm:gap-5 sm:grid-cols-2">
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Title <span className="text-rose-500">*</span>
@@ -285,7 +285,7 @@ export default function EditNote() {
                   onChange={handleChange("content")}
                   placeholder="Write your note content..."
                   rows={13}
-                  className={inputCls(errors.content)}
+                  className={`${inputCls(errors.content)} resize-y`}
                 />
                 {errors.content && (
                   <p className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">

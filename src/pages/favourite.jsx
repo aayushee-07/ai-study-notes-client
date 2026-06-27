@@ -19,6 +19,8 @@ import {
   Info,
   Sparkles,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Tag,
   BookOpen,
   CalendarDays,
@@ -99,21 +101,10 @@ function isFavorite(note) {
   return Boolean(note?.favorite || note?.isFavorite || note?.favorited || note?.starred);
 }
 
-function hasSummary(note) {
-  return Boolean(note?.aiContent?.summary);
-}
-
-function hasQuiz(note) {
-  return Boolean(note?.aiContent?.quiz);
-}
-
-function hasFlashcards(note) {
-  return Boolean(note?.aiContent?.flashcards);
-}
-
-function hasSimplify(note) {
-  return Boolean(note?.aiContent?.simplify);
-}
+function hasSummary(note) { return Boolean(note?.aiContent?.summary); }
+function hasQuiz(note) { return Boolean(note?.aiContent?.quiz); }
+function hasFlashcards(note) { return Boolean(note?.aiContent?.flashcards); }
+function hasSimplify(note) { return Boolean(note?.aiContent?.simplify); }
 
 function normalizeFavoritesData(data) {
   const raw = Array.isArray(data) ? data : data?.notes || data?.items || data?.favorites || data?.data || [];
@@ -126,8 +117,8 @@ function Toast({ toast, onClose }) {
     toast.type === "success"
       ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
       : toast.type === "error"
-      ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
-      : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
+        ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+        : "bg-sky-500/10 border-sky-500/20 text-sky-700 dark:text-sky-300";
   const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? AlertCircle : Info;
 
   return (
@@ -176,7 +167,9 @@ function ConfirmDeleteModal({ note, loading, onCancel, onConfirm }) {
           <div className="min-w-0 flex-1">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Remove favorite?</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              This will remove <span className="font-medium text-slate-900 dark:text-white">{getTitle(note)}</span> from your favorites.
+              This will remove{" "}
+              <span className="font-medium text-slate-900 dark:text-white">{getTitle(note)}</span>{" "}
+              from your favorites.
             </p>
           </div>
         </div>
@@ -230,17 +223,14 @@ function NoteCard({ note, view, onView, onRemove }) {
               {getSubject(note)}
             </span>
           </div>
-
-          <h3 className="mt-2 line-clamp-1 text-base font-semibold tracking-tight text-slate-900 dark:text-white">{getTitle(note)}</h3>
+          <h3 className="mt-2 line-clamp-1 text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+            {getTitle(note)}
+          </h3>
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{content}</p>
-
           {aiBadges.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {aiBadges.map((badge) => (
-                <span
-                  key={badge.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300"
-                >
+                <span key={badge.label} className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300">
                   {badge.icon} {badge.label}
                 </span>
               ))}
@@ -280,7 +270,9 @@ function NoteCard({ note, view, onView, onRemove }) {
               {getSubject(note)}
             </span>
           </div>
-          <h3 className="mt-3 line-clamp-2 text-base font-semibold tracking-tight text-slate-900 dark:text-white">{getTitle(note)}</h3>
+          <h3 className="mt-3 line-clamp-2 text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+            {getTitle(note)}
+          </h3>
         </div>
       </div>
 
@@ -289,10 +281,7 @@ function NoteCard({ note, view, onView, onRemove }) {
       {aiBadges.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {aiBadges.map((badge) => (
-            <span
-              key={badge.label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300"
-            >
+            <span key={badge.label} className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-700 dark:text-violet-300">
               {badge.icon} {badge.label}
             </span>
           ))}
@@ -302,10 +291,7 @@ function NoteCard({ note, view, onView, onRemove }) {
       {tags.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-            >
+            <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               <Tag size={10} /> {tag}
             </span>
           ))}
@@ -382,13 +368,13 @@ export default function Favorites() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // FIX #4: fetchFavorites no longer takes a page param — all pagination is client-side
   const fetchFavorites = useCallback(
-    async (pageNumber = 1, silent = false) => {
+    async (silent = false) => {
       silent ? setRefreshing(true) : setLoading(true);
       try {
-        const res = await apiClient.get(`/notes/favorites?page=${pageNumber}`);
+        const res = await apiClient.get("/notes/favorites");
         setFavorites(normalizeFavoritesData(res?.data));
-        setPage(pageNumber);
       } catch (err) {
         showToast(err?.response?.data?.message || err?.message || "Failed to load favorites.", "error");
       } finally {
@@ -398,13 +384,13 @@ export default function Favorites() {
     [showToast]
   );
 
+  // FIX #4: Only fetch once on mount, not on every page change
   useEffect(() => {
-    fetchFavorites(page, false);
-  }, [fetchFavorites, page]);
+    fetchFavorites(false);
+  }, [fetchFavorites]);
 
   const filteredFavorites = useMemo(() => {
     let list = [...favorites];
-
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((note) => {
@@ -417,19 +403,19 @@ export default function Favorites() {
         );
       });
     }
-
     const sorters = {
       newest: (a, b) => new Date(getCreatedAt(b) || 0) - new Date(getCreatedAt(a) || 0),
       oldest: (a, b) => new Date(getCreatedAt(a) || 0) - new Date(getCreatedAt(b) || 0),
       az: (a, b) => getTitle(a).localeCompare(getTitle(b)),
     };
-
     return list.sort(sorters[sortBy] || sorters.newest);
   }, [favorites, search, sortBy]);
 
   const favoriteCount = favorites.length;
-  const pdfCount = useMemo(() => favorites.filter((note) => getNoteType(note) === "PDF").length, [favorites]);
-  const manualCount = useMemo(() => favorites.filter((note) => getNoteType(note) === "Manual Note").length, [favorites]);
+  const pdfCount = useMemo(() => favorites.filter((n) => getNoteType(n) === "PDF").length, [favorites]);
+  const manualCount = useMemo(() => favorites.filter((n) => getNoteType(n) === "Manual Note").length, [favorites]);
+
+  // FIX #3: Pass .getTime() (number) to formatRelativeTime, not a Date object
   const latestUpdated = useMemo(() => {
     const dates = favorites
       .map((note) => getUpdatedAt(note))
@@ -437,10 +423,23 @@ export default function Favorites() {
       .map((value) => new Date(value))
       .filter((date) => !Number.isNaN(date.getTime()));
     if (!dates.length) return null;
-    return dates.sort((a, b) => b - a)[0];
+    return dates.sort((a, b) => b - a)[0].getTime();
   }, [favorites]);
 
-  const totalPages = Math.max(1, Math.ceil(Math.max(filteredFavorites.length, 1) / 12));
+  const totalPages = Math.max(1, Math.ceil(filteredFavorites.length / 12));
+
+  const paginatedFavorites = useMemo(() => {
+    const start = (page - 1) * 12;
+    return filteredFavorites.slice(start, start + 12);
+  }, [filteredFavorites, page]);
+
+  // Reset page on filter change
+  useEffect(() => { setPage(1); }, [search, sortBy]);
+
+  // Clamp page if total pages shrinks
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const handleRemoveFavorite = useCallback(
     async (note) => {
@@ -461,19 +460,6 @@ export default function Favorites() {
     [showToast]
   );
 
-  const paginatedFavorites = useMemo(() => {
-    const start = (page - 1) * 12;
-    return filteredFavorites.slice(start, start + 12);
-  }, [filteredFavorites, page]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, sortBy]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
   return (
     <Layout>
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -485,6 +471,8 @@ export default function Favorites() {
       />
 
       <div className="space-y-6 lg:space-y-8">
+
+        {/* Hero */}
         <section className="rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:p-7 lg:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
@@ -498,10 +486,9 @@ export default function Favorites() {
                 Quick access to your most important study materials.
               </p>
             </div>
-
             <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
               <button
-                onClick={() => fetchFavorites(page, true)}
+                onClick={() => fetchFavorites(true)}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-500/10"
               >
                 <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /> Refresh
@@ -516,7 +503,8 @@ export default function Favorites() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* FIX #2: Stats — lg:grid-cols-4 instead of xl:grid-cols-4 */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Favorites"
             value={favoriteCount}
@@ -541,6 +529,7 @@ export default function Favorites() {
             iconBg="bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
             muted="Favorite manual notes"
           />
+          {/* FIX #3: Pass .getTime() number to formatRelativeTime, not a Date object */}
           <StatCard
             label="Recently Updated"
             value={latestUpdated ? formatRelativeTime(latestUpdated) : "—"}
@@ -551,6 +540,7 @@ export default function Favorites() {
           />
         </section>
 
+        {/* Filters */}
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#161b22] sm:p-5 lg:p-6">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-4">
             <div className="lg:col-span-5">
@@ -613,9 +603,11 @@ export default function Favorites() {
           </div>
         </section>
 
+        {/* Count bar */}
         <section className="flex items-center justify-between gap-3">
           <div className="text-sm text-slate-600 dark:text-slate-300">
-            Showing <span className="font-semibold text-slate-900 dark:text-white">{paginatedFavorites.length}</span> notes
+            Showing{" "}
+            <span className="font-semibold text-slate-900 dark:text-white">{paginatedFavorites.length}</span> notes
             <span className="mx-2 text-slate-300 dark:text-slate-600">·</span>
             <span className="font-semibold text-slate-900 dark:text-white">{favoriteCount}</span> favorites
           </div>
@@ -625,15 +617,14 @@ export default function Favorites() {
           </div>
         </section>
 
+        {/* FIX #1: Cards — lg:grid-cols-3 instead of xl:grid-cols-3 */}
         <section>
           {loading ? (
-            <div className={view === "list" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"}>
-              {[...Array(6)].map((_, i) => (
-                <SkeletonCard key={i} view={view} />
-              ))}
+            <div className={view === "list" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
+              {[...Array(6)].map((_, i) => <SkeletonCard key={i} view={view} />)}
             </div>
           ) : paginatedFavorites.length ? (
-            <div className={view === "list" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"}>
+            <div className={view === "list" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"}>
               {paginatedFavorites.map((note) => (
                 <NoteCard
                   key={getNoteId(note) || getTitle(note)}
@@ -645,40 +636,32 @@ export default function Favorites() {
               ))}
             </div>
           ) : (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center dark:border-slate-800 dark:bg-[#161b22]">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-                <Star size={24} className="fill-violet-500 dark:fill-violet-300" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No favorite notes yet</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
-                Star your important notes to access them quickly from this page.
-              </p>
-            </div>
+            <EmptyState onBrowse={() => navigate("/notes")} />
           )}
         </section>
 
+        {/* FIX #5: Pagination with ChevronLeft/ChevronRight icons matching other pages */}
         <section className="flex flex-col items-center justify-between gap-3 pb-6 sm:flex-row">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || refreshing}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
           >
-            Previous
+            <ChevronLeft size={16} /> Previous
           </button>
-
           <div className="text-sm text-slate-600 dark:text-slate-300">
             Page <span className="font-semibold text-slate-900 dark:text-white">{page}</span> of{" "}
             <span className="font-semibold text-slate-900 dark:text-white">{totalPages}</span>
           </div>
-
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages || refreshing}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
           >
-            Next
+            Next <ChevronRight size={16} />
           </button>
         </section>
+
       </div>
     </Layout>
   );
