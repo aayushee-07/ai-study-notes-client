@@ -184,8 +184,8 @@ function Toast({ toast, onClose }) {
 
 function SectionHeader({ title, subtitle, actionLabel, onAction, actionIcon: ActionIcon }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-3">
-      <div>
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
         <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
           {title}
         </h2>
@@ -196,7 +196,7 @@ function SectionHeader({ title, subtitle, actionLabel, onAction, actionIcon: Act
       {onAction ? (
         <button
           onClick={onAction}
-          className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-violet-700 transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-[#161b22] dark:text-violet-300 dark:hover:border-violet-700 dark:hover:bg-violet-500/10"
+          className="inline-flex shrink-0 items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-medium text-violet-700 transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-[#161b22] dark:text-violet-300 dark:hover:border-violet-700 dark:hover:bg-violet-500/10"
         >
           {ActionIcon ? <ActionIcon size={14} /> : null}
           {actionLabel}
@@ -208,16 +208,16 @@ function SectionHeader({ title, subtitle, actionLabel, onAction, actionIcon: Act
 
 function StatCard({ label, value, icon, valueColor, iconBg, muted }) {
   return (
-    <div className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22]">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22] sm:p-5">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {label}
         </span>
-        <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconBg}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl sm:h-11 sm:w-11 ${iconBg}`}>
           {icon}
         </span>
       </div>
-      <p className={`text-3xl font-bold tracking-tight ${valueColor}`}>{value}</p>
+      <p className={`text-2xl font-bold tracking-tight sm:text-3xl ${valueColor}`}>{value}</p>
       {muted ? (
         <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{muted}</p>
       ) : null}
@@ -229,7 +229,7 @@ function ActionCard({ icon, iconBg, title, subtitle, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group flex h-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-700/60"
+      className="group flex h-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg dark:border-slate-800 dark:bg-[#161b22] dark:hover:border-violet-700/60 sm:p-5"
     >
       <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBg}`}>
         {icon}
@@ -240,7 +240,7 @@ function ActionCard({ icon, iconBg, title, subtitle, onClick }) {
       </div>
       <ArrowRight
         size={16}
-        className="text-slate-400 transition-colors group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-300"
+        className="shrink-0 text-slate-400 transition-colors group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-300"
       />
     </button>
   );
@@ -272,7 +272,7 @@ function NoteCard({ note, onView, ctaLabel = "Continue" }) {
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-[#10151d] dark:text-slate-300"
+              className="inline-flex max-w-full items-center gap-1 break-words rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-[#10151d] dark:text-slate-300"
             >
               {tag}
             </span>
@@ -280,7 +280,7 @@ function NoteCard({ note, onView, ctaLabel = "Continue" }) {
         </div>
       ) : null}
 
-      <div className="mt-auto flex items-center justify-between gap-3 pt-5 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1.5">
           <Clock3 size={12} /> {formatDate(getUpdatedAt(note))}
         </span>
@@ -553,13 +553,13 @@ export default function Dashboard() {
 
       <div className="space-y-6 pb-8 lg:space-y-7">
         {/* Hero / Welcome */}
-        <section className="rounded-[2rem] border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 px-5 py-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:px-6 sm:py-5 lg:px-7">
+        <section className="rounded-[2rem] border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 px-4 py-5 shadow-sm dark:border-slate-800 dark:from-[#161b22] dark:via-[#161b22] dark:to-[#11151c] sm:px-6 sm:py-5 lg:px-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:border-violet-900/50 dark:text-violet-300">
                 OVERVIEW
               </div>
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[2rem]">
+              <h1 className="mt-3 break-words text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl md:text-[2rem]">
                 Welcome back, {displayName} 👋
               </h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
@@ -567,17 +567,17 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3 md:justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap md:justify-end">
               <button
                 onClick={onRefresh}
-                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-4 py-2.5 text-sm font-medium text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-[#161b22] dark:text-violet-300 dark:hover:bg-violet-500/10"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-4 py-2.5 text-sm font-medium text-violet-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-[#161b22] dark:text-violet-300 dark:hover:bg-violet-500/10"
               >
                 <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                 Refresh
               </button>
               <button
                 onClick={() => navigate("/notes/create")}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-600 hover:shadow-md"
               >
                 <Plus size={16} />
                 Create Note
@@ -586,9 +586,9 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* FIX #1: Stats — lg:grid-cols-4 instead of xl:grid-cols-4 */}
+        {/* Stats — 2 → 2 → 3 → 4 columns across breakpoints */}
         <section>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {loading
               ? [...Array(8)].map((_, i) => <SkeletonCard key={i} className="h-full min-h-32" />)
               : stats.map((stat) => (
@@ -605,7 +605,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* FIX #1: Quick Actions — lg:grid-cols-4 instead of xl:grid-cols-4 */}
+        {/* Quick Actions — 1 → 2 → 2 → 4 columns across breakpoints */}
         <section>
           <SectionHeader
             title="Quick Actions"
@@ -643,7 +643,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* FIX #2: Recent Notes — simplified grid class */}
+        {/* Recent Notes */}
         <section>
           <SectionHeader
             title="Continue Study"
@@ -674,9 +674,9 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* Favorites / Chats / AI Activity */}
+        {/* Favorites / Chats / AI Activity — 1 → 2 → 3 columns across breakpoints */}
         <section>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
             {/* Favorite Notes */}
             <div className="flex h-full flex-col">
               <SectionHeader
@@ -727,7 +727,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* FIX #5: Recent AI Usage — clean item pass, no dead props */}
+            {/* Recent AI Usage */}
             <div className="flex h-full flex-col">
               <SectionHeader title="Recent AI Usage" subtitle="Latest 3 activities." />
               <div className="flex h-full flex-col gap-4">
