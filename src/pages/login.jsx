@@ -44,11 +44,22 @@ export default function Login({ setUser }) {
       if (userData.role === "admin") navigate("/admin-dashboard");
       else navigate("/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Login failed"
-      );
+      const serverMsg =
+        err.response?.data?.message || err.response?.data?.error || "";
+
+      // This backend returns 400 + "Invalid Email" when no account exists
+      // for that email (as opposed to "Invalid Password" for a wrong
+      // password). Treat that case as "please register first".
+      const isUnregistered =
+        /invalid email|not found|no account|not registered|does not exist|no user/i.test(
+          serverMsg
+        );
+
+      if (isUnregistered) {
+        setError("No account found with this email. Please register first.");
+      } else {
+        setError(serverMsg || "Login failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -84,6 +95,18 @@ export default function Login({ setUser }) {
             {error && (
               <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 sm:text-sm">
                 {error}
+                {error.toLowerCase().includes("register") && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/register")}
+                      className="font-semibold underline underline-offset-2 hover:text-rose-700 dark:hover:text-rose-200"
+                    >
+                      Register now
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
