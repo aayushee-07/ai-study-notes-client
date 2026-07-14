@@ -71,9 +71,24 @@ export default function Register({ setUser }) {
         password: password.trim(),
       });
 
-      const userData = { ...res.data.user, token: res.data.token };
+      const { token, user } = res.data;
+
+      // Guard against a backend response that doesn't include a token
+      // (e.g. registration succeeded but no session was issued). Without
+      // this check we'd store the literal string "undefined" and get
+      // bounced straight back to /login after a failed authenticated
+      // request on the dashboard.
+      if (!token || !user) {
+        setError(
+          "Account created, but we couldn't log you in automatically. Please sign in."
+        );
+        navigate("/login");
+        return;
+      }
+
+      const userData = { ...user, token };
       localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("token", token);
 
       if (setUser) setUser(userData);
       navigate("/dashboard");
