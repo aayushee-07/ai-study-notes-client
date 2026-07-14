@@ -13,11 +13,11 @@
 import axios from "axios";
 
 const apiClient = axios.create({
- baseURL:
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV
-    ? "http://localhost:5000/api"
-    : "https://ai-study-notes-server.onrender.com/api"),
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV
+      ? "http://localhost:5000/api"
+      : "https://ai-study-notes-server.onrender.com/api"),
 
   // 2-minute default — covers slow AI responses (summary, simplify).
   // Individual aiService calls that need even longer can pass their own
@@ -43,6 +43,12 @@ apiClient.interceptors.response.use(
   (err) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("refreshToken");
+
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("refreshToken");
       // Only redirect if not already on the auth pages
       if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login";

@@ -36,8 +36,20 @@ export default function Login({ setUser }) {
         token: res.data.token,
       };
 
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("token", res.data.token);
+      // Clear any old session
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+
+      // Save according to Remember Me
+      if (rememberMe) {
+        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("token", res.data.token);
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(userData));
+        sessionStorage.setItem("token", res.data.token);
+      }
 
       if (setUser) setUser(userData);
 
